@@ -57,7 +57,12 @@ Never send them to a server. Never log them. Never put them in a URL.
 
 *Why: this is the entire product. If a server can hold a salt, that server can read everyone's salary, and we have built a normal payroll app with extra steps.*
 
-### 3. One folder, one branch, one owner
+### 3. One folder, one branch, one owner — and never touch root files
+
+**Ports, agreed once:** worker-app `3000` · employer-app `3001` · backend `3002` · auditor `3003`. Proof server `6300`, indexer `8088`, node `9944` are fixed by Midnight.
+
+**Nobody edits root `package.json`, `tsconfig.base.json`, or `.gitignore`.** They are the only files two people would both need to change, and therefore the only realistic source of merge conflicts. Need a change? Ask the lead, they make it once, everyone pulls.
+
 
 Edit only your own folder. Pull from **`dev`** often — that is the branch everything merges into.
 
