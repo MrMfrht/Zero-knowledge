@@ -11,13 +11,19 @@ import type {
   WorkerSummary,
 } from '@nightshift/shared';
 import { comparePeriods } from '@nightshift/shared';
-import type { PayrollApi } from '../PayrollApi.js';
+import type {
+  OnTransactionStatus,
+  PayrollApi,
+  TransactionStatus,
+  WalletStatus,
+} from '../PayrollApi.js';
 import {
   AlreadyConfirmedError,
   ContributionMismatchError,
   HoursNotApprovedError,
   MissingPrivateStateError,
   OfferMismatchError,
+  PayrollError,
   PaymentMismatchError,
   UnknownWorkerError,
 } from '../errors.js';
@@ -57,6 +63,13 @@ function seal(rate: Amount, salt: Salt): Commitment {
 function randomSalt(): Salt {
   let out = '0x';
   for (let i = 0; i < 64; i += 1) out += '0123456789abcdef'[Math.floor(Math.random() * 16)];
+  return out;
+}
+
+/** Stands in for a real transaction hash. Same shape, no cryptographic meaning. */
+function fakeTxId(): string {
+  let out = '0x';
+  for (let i = 0; i < 40; i += 1) out += '0123456789abcdef'[Math.floor(Math.random() * 16)];
   return out;
 }
 
@@ -174,6 +187,7 @@ export interface MockPayrollApiOptions {
 export class MockPayrollApi implements PayrollApi {
   private readonly me: WorkerKey;
   private readonly latencyMs: number;
+  private walletStatus: WalletStatus = { connected: false };
 
   constructor(options: MockPayrollApiOptions) {
     this.me = options.actingAs;
@@ -187,49 +201,83 @@ export class MockPayrollApi implements PayrollApi {
     return this.me;
   }
 
+  // --- wallet ----------------------------------------------------------------
+
+  async connectWallet(): Promise<WalletStatus> {
+    await this.tick();
+    // Deterministic fake address per identity, so re-connecting in a demo
+    // shows the same address rather than a new random one each time.
+    this.walletStatus = { connected: true, address: `mn_addr_undeployed_mock${this.me.slice(2, 10)}` };
+    return this.walletStatus;
+  }
+
+  async disconnectWallet(): Promise<void> {
+    await this.tick();
+    this.walletStatus = { connected: false };
+  }
+
+  async getWalletStatus(): Promise<WalletStatus> {
+    await this.tick();
+    return this.walletStatus;
+  }
+
+  async payWorker(params: {
+    workerKey: WorkerKey;
+    amount: Amount;
+    onStatus?: OnTransactionStatus;
+  }): Promise<{ txId: string }> {
+    this.requireWorker(params.workerKey);
+    if (!this.walletStatus.connected) throw new PayrollError('No wallet connected.');
+    return this.withLifecycle(params.onStatus, async () => ({ txId: fakeTxId() }));
+  }
+
   // --- employer ------------------------------------------------------------
 
   async hire(params: {
     workerKey: WorkerKey;
     ratePerPeriod: Amount;
     expectedHours: number;
+    onStatus?: OnTransactionStatus;
   }): Promise<Offer> {
-    await this.tick();
-    const salt = randomSalt();
-    const commitment = seal(params.ratePerPeriod, salt);
+    return this.withLifecycle(params.onStatus, async () => {
+      const salt = randomSalt();
+      const commitment = seal(params.ratePerPeriod, salt);
 
-    sharedStore.workers.set(params.workerKey, {
-      key: params.workerKey,
-      active: true,
-      commitment,
-      expectedHours: params.expectedHours,
-      approvedHours: new Map(),
-      confirmed: new Set(),
-      contributionVerified: new Set(),
-      accepted: false,
-    });
-    sharedStore.pendingOffers.set(params.workerKey, {
-      ratePerPeriod: params.ratePerPeriod,
-      salt,
-    });
+      sharedStore.workers.set(params.workerKey, {
+        key: params.workerKey,
+        active: true,
+        commitment,
+        expectedHours: params.expectedHours,
+        approvedHours: new Map(),
+        confirmed: new Set(),
+        contributionVerified: new Set(),
+        accepted: false,
+      });
+      sharedStore.pendingOffers.set(params.workerKey, {
+        ratePerPeriod: params.ratePerPeriod,
+        salt,
+      });
 
-    return {
-      workerKey: params.workerKey,
-      ratePerPeriod: params.ratePerPeriod,
-      salt,
-      commitment,
-      expectedHours: params.expectedHours,
-    };
+      return {
+        workerKey: params.workerKey,
+        ratePerPeriod: params.ratePerPeriod,
+        salt,
+        commitment,
+        expectedHours: params.expectedHours,
+      };
+    });
   }
 
   async approveHours(params: {
     workerKey: WorkerKey;
     period: Period;
     hours: number;
+    onStatus?: OnTransactionStatus;
   }): Promise<void> {
-    await this.tick();
-    const worker = this.requireWorker(params.workerKey);
-    worker.approvedHours.set(params.period, params.hours);
+    return this.withLifecycle(params.onStatus, async () => {
+      const worker = this.requireWorker(params.workerKey);
+      worker.approvedHours.set(params.period, params.hours);
+    });
   }
 
   async endEmployment(workerKey: WorkerKey): Promise<void> {
@@ -371,5 +419,39 @@ export class MockPayrollApi implements PayrollApi {
 
   private tick(): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, this.latencyMs));
+  }
+
+  /**
+   * Runs `work`, reporting the same signing → proving → submitting → pending
+   * → confirmed/failed stages a real chain call goes through, so employer-
+   * and worker-app UI can be built against realistic transitions before the
+   * real `MidnightPayrollApi` exists. `work` throwing surfaces as `'failed'`
+   * and rethrows; nothing here changes what callers already get by ignoring
+   * `onStatus` entirely.
+   */
+  private async withLifecycle<T>(
+    onStatus: OnTransactionStatus | undefined,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const stages: TransactionStatus[] = [
+      { stage: 'signing' },
+      { stage: 'proving' },
+      { stage: 'submitting' },
+      { stage: 'pending' },
+    ];
+    for (const status of stages) {
+      onStatus?.(status);
+      await this.tick();
+    }
+
+    try {
+      const result = await work();
+      onStatus?.({ stage: 'confirmed', txId: fakeTxId() });
+      return result;
+    } catch (err) {
+      const error = err instanceof PayrollError ? err : new PayrollError(String(err));
+      onStatus?.({ stage: 'failed', error });
+      throw err;
+    }
   }
 }
