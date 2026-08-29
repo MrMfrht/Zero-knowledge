@@ -3,7 +3,7 @@
 **You are building:** the layer that connects the smart contract to the three apps — plus you are answering the one question that could change the whole project.
 
 **Your folder:** `packages/api/`
-**Your branch:** `feat/api`
+**Your branch:** `api` (branched from `dev`)
 
 ---
 
@@ -85,6 +85,11 @@ The README's [Version 1 section](../packages/api/README.md#version-1--what-is-st
 What the real version does:
 
 1. Imports A's compiled contract from `packages/contract/src/managed/`
+
+> **If you compile anything yourself, use `--skip-zk`:**
+> `compact compile --skip-zk <file> <outdir>`
+> It skips proving-key generation, turning a minutes-long build into seconds. Drop the flag only when you need real keys.
+
 2. Wires up the Midnight providers (see [Midnight.js](https://docs.midnight.network/sdks/official/midnight-js))
 3. Connects to the wallet
 4. Turns each interface method into a real contract call

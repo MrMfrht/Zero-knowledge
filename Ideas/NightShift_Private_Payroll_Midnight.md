@@ -98,8 +98,11 @@ NightShift already holds the one thing that closes this: a **binding commitment 
 ```
 proveContribution(March, declared, 5000, salt):
     assert  persistentCommit(5000, salt) == the sealed salary
-    assert  declared == 5000 × contributionRate / 100
+    assert  declared × 100 == 5000 × contributionRate
 ```
+
+*(Written as a cross-multiplication because Compact has no division operator —
+confirmed by compiling it. See [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md).)*
 
 The worker can prove their contributions were computed on their real salary — without revealing the salary. An under-declaring employer leaves a permanent, public gap they cannot fill. This works as employee-held evidence for a tribunal or inspection **whether or not the fund itself ever adopts anything**.
 
@@ -201,7 +204,8 @@ export circuit proveContribution(period: Uint<32>, declared: Uint<64>,
     const pk = disclose(periodKey(k, period));
     assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
            "not the agreed rate");
-    assert(declared == rate * (contributionRate as Uint<64>) / 100, "under-declared");
+    // No division operator in Compact — cross-multiply instead. Verified by compiling.
+    assert(declared * 100 == rate * (contributionRate as Uint<64>), "under-declared");
     contributionOk.insert(pk, true);
 }
 
@@ -216,7 +220,7 @@ Design rules carried over from [the privacy model](../docs/midnight-privacy-mode
 - **Identity is a derived key, never `ownPublicKey()`** — that's a witness the prover's machine controls; the docs say never to authenticate with it ([Smart contract security](https://docs.midnight.network/compact/smart-contract-security)).
 - **`persistentCommit` output needs no `disclose()`** — the salt satisfies the compiler; `persistentHash` output does need one ([Explicit disclosure](https://docs.midnight.network/compact/reference/explicit-disclosure)).
 - **Fresh salt per commitment, domain separators per purpose** ([Smart contract security](https://docs.midnight.network/compact/smart-contract-security)).
-- **The multiplication needs a spike.** `hours × rate` in `Uint<64>` is far from any realistic payroll number, but Compact's arithmetic behaviour on overflow is documented in [Security and best practices](https://docs.midnight.network/guides/security-best-practices) and must be *read and tested*, not assumed — an assertion that can wrap is not an assertion.
+- **The multiplication was spiked and is safe.** `amount == (hours as Uint<64>) * rate` compiles, and Compact widens the product rather than wrapping, so there is no overflow to exploit. Storing a product is a compile error, and **Compact has no division operator at all** — see [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md).
 - **No escrow anywhere.** The contract never holds a coin. This is the single biggest de-risking decision in the design: everything the [shielded token tutorial](https://docs.midnight.network/tokens/shielded-token) lists as hard (contract shielded balances, fresh-vs-committed coins, caller-only `sendShielded`) simply does not apply.
 
 ---

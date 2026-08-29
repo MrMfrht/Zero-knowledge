@@ -3,7 +3,7 @@
 **You are building:** the app a company uses. They hire someone, approve their hours, and pay them privately.
 
 **Your folder:** `packages/employer-app/`
-**Your branch:** `feat/employer-app`
+**Your branch:** `employer-app` (branched from `dev`)
 
 ---
 

@@ -8,11 +8,15 @@ One page. Read it once, keep it open.
 
 | You are | Your file | Your folder | Your branch | Need WSL? |
 |---|---|---|---|---|
-| **A** — Contract | [01-contract.md](01-contract.md) | `packages/contract/` | `feat/contract` | **YES** |
-| **B** — Integration | [02-integration.md](02-integration.md) | `packages/api/` | `feat/api` | **YES** |
-| **C** — Worker app | [03-worker-app.md](03-worker-app.md) | `packages/worker-app/` | `feat/worker-app` | **No** |
-| **D** — Employer app | [04-employer-app.md](04-employer-app.md) | `packages/employer-app/` | `feat/employer-app` | **No** |
-| **E** — Auditor view | [05-auditor.md](05-auditor.md) | `packages/auditor/` | `feat/auditor` | **No** |
+| **A** — Contract | [01-contract.md](01-contract.md) | `packages/contract/` | `contract` | **YES** |
+| **B** — Integration | [02-integration.md](02-integration.md) | `packages/api/` | `api` | **YES** |
+| **C** — Worker app | [03-worker-app.md](03-worker-app.md) | `packages/worker-app/` | `worker-app` | **No** |
+| **D** — Employer app | [04-employer-app.md](04-employer-app.md) | `packages/employer-app/` | `employer-app` | **No** |
+| **E** — Auditor view | [05-auditor.md](05-auditor.md) | `packages/auditor/` | `auditor` | **No** |
+
+**All branches come off `dev` and merge back into `dev`.** `main` is not used
+during the build — a plain `git clone` lands you on it and it is nearly empty,
+so run `git checkout dev` first.
 
 Only the two people who compile smart contracts need WSL. Everyone else works normally on Windows, Mac, or Linux.
 
@@ -51,7 +55,7 @@ Never send them to a server. Never log them. Never put them in a URL.
 
 ### 3. One folder, one branch, one owner
 
-Edit only your own folder. Pull from `main` often.
+Edit only your own folder. Pull from **`dev`** often — that is the branch everything merges into.
 
 Two things belong to the lead, not to you: `packages/shared/` and `packages/api/src/PayrollApi.ts`. **Ask before touching either.** Five people build against them.
 
@@ -64,6 +68,14 @@ AI models invent Compact that looks perfect and does not compile. The official d
 33 Midnight skills are already in this repo and load automatically in Copilot, Codex, Antigravity, Cursor and ~70 other tools. Beyond those, use the **Ask AI** button on [docs.midnight.network](https://docs.midnight.network/), or add the docs MCP server to your editor (Ask AI → Use MCP).
 
 *A wrong guess costs an hour of debugging. Looking it up costs a minute.*
+
+### 4b. If you compile contracts (A and B only): always use `--skip-zk`
+
+```bash
+compact compile --skip-zk src/payroll.compact src/managed
+```
+
+A plain `compact compile` also builds zero-knowledge proving keys — minutes, every time. `--skip-zk` checks correctness only, in seconds. Drop the flag once, at the end, when B needs the real keys.
 
 ### 5. Nothing is private just because you called it private
 
