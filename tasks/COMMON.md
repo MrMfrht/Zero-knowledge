@@ -126,6 +126,8 @@ Each payday, the worker proves the money they received matches that sealed agree
 
 The demo moment: an employer underpays, and the worker **cannot** confirm it even if they wanted to. That month stays publicly unconfirmed forever, while the actual salary stays unreadable.
 
+Curious how it actually works — what a salt is, how a sealed salary can still be checked? **[01-contract-EXPLAINED.md](01-contract-EXPLAINED.md)** explains it from zero.
+
 Full detail if you want it: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md).
 
 ---

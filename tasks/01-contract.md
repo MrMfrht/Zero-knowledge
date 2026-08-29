@@ -5,6 +5,13 @@
 **Your folder:** `packages/contract/`
 **Your branch:** `contract` (branched from `dev`)
 
+> ### 👉 New to blockchain? Read [01-contract-EXPLAINED.md](01-contract-EXPLAINED.md) first.
+>
+> It explains — assuming zero prior knowledge — what a salt is, what a commitment
+> is, why a `Map` publishes your salary to the world, why `ownPublicKey()` cannot
+> check who is calling, and **why each of the six circuits exists**.
+> This file is the practical checklist; that one is the understanding.
+
 ---
 
 ## Do you need WSL?

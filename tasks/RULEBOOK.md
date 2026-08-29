@@ -22,6 +22,8 @@ Only the two people who compile smart contracts need WSL. Everyone else works no
 
 New here? Start with [COMMON.md](COMMON.md), then open your own file.
 
+Want to understand *why* any of this works — salts, commitments, zero-knowledge, in plain language? **[01-contract-EXPLAINED.md](01-contract-EXPLAINED.md)**. Written for A, useful to everyone.
+
 Writing code? Read **[packages/README.md](../packages/README.md)** first (what the folders are, three minutes), then **[packages/api/README.md](../packages/api/README.md)** — the API guide, one section per person.
 
 ---
