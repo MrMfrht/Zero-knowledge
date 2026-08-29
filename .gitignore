@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+
+# Compact compiler output — A commits packages/contract/src/managed/ deliberately,
+# so it is NOT ignored. Everything else the toolchain generates is.

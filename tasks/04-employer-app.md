@@ -88,6 +88,8 @@ Leave this amount field editable. In the demo, someone types 4,000 here and the 
 
 ---
 
+> **Your API guide: [packages/api/README.md](../packages/api/README.md)** — the "For D" section has paste-ready code for every screen below.
+
 ## How to start today, with nothing from anyone else
 
 ```bash
@@ -98,16 +100,26 @@ Build all four screens with **fake hardcoded data**. Do not wait for the contrac
 
 Then do the one piece of real integration you can do alone: **get a wallet connecting.** Follow the [React wallet connector guide](https://docs.midnight.network/guides/react-wallet-connect) and MIDSKILLS' `react-wallet-connector` skill. Connecting a wallet does not depend on our contract at all, so you can finish it early — and both apps need it, so share what you learn with C.
 
-When the lead pushes `packages/api/`, swap fake data for:
+Then swap your fake data for the real API, which already exists:
 
-```typescript
-import { PayrollApi } from '@nightshift/api';
+```ts
+import { MockPayrollApi, DEMO_EMPLOYER } from '@nightshift/api';
 
-await payrollApi.hire(workerKey, sealedRate);
-await payrollApi.approveHours(workerKey, period, hours);
+const api = new MockPayrollApi({ actingAs: DEMO_EMPLOYER });
+
+const offer = await api.hire({
+  workerKey: '0x7f3a…',
+  ratePerPeriod: 5000n,   // for hourly workers, the rate for ONE hour
+  expectedHours: 1,       // 1 for salaried
+});
+// offer.commitment → public, on-chain, unreadable
+// offer.ratePerPeriod + offer.salt → send these to the worker directly.
+//   They cannot accept without both.
+
+await api.approveHours({ workerKey: '0x7f3a…', period: '2026-04', hours: 1 });
 ```
 
-It is a fake implementation at first. When B finishes the real one, **your code does not change.**
+`MockPayrollApi` is a working fake with seeded data. Later B swaps in the real one and **only the line that creates `api` changes.** Every worked example is in **[packages/api/README.md](../packages/api/README.md)**.
 
 ---
 

@@ -18,6 +18,8 @@ Only the two people who compile smart contracts need WSL. Everyone else works no
 
 New here? Start with [COMMON.md](COMMON.md), then open your own file.
 
+Writing code? Read **[packages/README.md](../packages/README.md)** first (what the folders are, three minutes), then **[packages/api/README.md](../packages/api/README.md)** — the API guide, one section per person.
+
 ---
 
 ## Everyone can start today
@@ -51,7 +53,9 @@ Never send them to a server. Never log them. Never put them in a URL.
 
 Edit only your own folder. Pull from `main` often.
 
-Two things belong to nobody: `packages/shared/` and the `PayrollApi` interface. **Ask before touching either.** Five people depend on them.
+Two things belong to the lead, not to you: `packages/shared/` and `packages/api/src/PayrollApi.ts`. **Ask before touching either.** Five people build against them.
+
+Need something the interface does not give you? That is a missing method, not a reason to reach around it. Say so — including B, especially B.
 
 ### 4. Never guess at Compact or Midnight syntax
 

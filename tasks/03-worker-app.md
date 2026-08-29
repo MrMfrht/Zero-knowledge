@@ -91,6 +91,8 @@ Judges will look at this for five seconds and understand the whole project. Make
 
 ---
 
+> **Your API guide: [packages/api/README.md](../packages/api/README.md)** — the "For C" section has paste-ready code for every screen below.
+
 ## How to start today, with nothing from anyone else
 
 ```bash
@@ -99,15 +101,25 @@ npm create vite@latest worker-app -- --template react-ts
 
 Build all four screens with **fake hardcoded data**. Do not wait for the contract or the API. Layout, navigation, and how the screens feel do not depend on any of it.
 
-Then, when the lead pushes `packages/api/`, swap your fake data for this:
+Then swap your fake data for the real API, which already exists:
 
-```typescript
-import { PayrollApi } from '@nightshift/api';
+```ts
+import { MockPayrollApi, DEMO_KARIM, PaymentMismatchError } from '@nightshift/api';
 
-await payrollApi.confirmPayment(period, hours, rate, salt, amountReceived);
+const api = new MockPayrollApi({ actingAs: DEMO_KARIM });
+
+try {
+  await api.confirmPayment({ period: '2026-04', amountReceived: 5000n });
+} catch (e) {
+  if (e instanceof PaymentMismatchError) {
+    // the demo moment — show it deliberately, not as a crash
+  }
+}
 ```
 
-That is a **fake implementation** at first, and it returns sensible fake answers. Later B replaces it with the real one and **your code does not change at all.** That is why we agreed the interface before writing anything.
+Notice you do **not** pass the rate or the salt. The api reads them from the device. No UI code ever holds a secret.
+
+`MockPayrollApi` is a working fake with seeded data. Later B swaps in the real one and **only the line that creates `api` changes.** Every worked example is in **[packages/api/README.md](../packages/api/README.md)**.
 
 ---
 

@@ -1,6 +1,8 @@
 # Working in this repository
 
-This repo plans privacy-preserving sealed-bidding applications on the **Midnight Network**. It is currently a **planning repository** — markdown only, no code yet. Do not scaffold an application, add a `package.json`, or write contracts unless asked to.
+This repo builds **NightShift** — private payroll with public proof, on the **Midnight Network**.
+
+It is now in implementation. The workspace skeleton, `packages/shared/`, and `packages/api/` (interface + mock) exist. The Compact contract does not yet. Follow the Engineering standards below, and check [tasks/RULEBOOK.md](tasks/RULEBOOK.md) for who owns which folder before editing anything.
 
 ## Layout
 
@@ -11,6 +13,10 @@ docs/
   midnight-explained-part3.md      Living fully inside Midnight; compliance
   midnight-docs-map.md             Annotated index of every Midnight doc worth reading
   midnight-privacy-model.md        What Midnight actually hides — the design constraints
+packages/
+  README.md                        What src/dist mean, why two folders — read first
+  shared/                          Domain types. No Midnight imports, ever.
+  api/                             PayrollApi interface + mock. README.md is the team guide.
 tasks/
   RULEBOOK.md                      One-page team rules
   COMMON.md                        Shared setup; one task file per team member
