@@ -15,7 +15,8 @@
   "dependencies": {
     "@nightshift/shared": "0.1.0",
     "@midnight-ntwrk/wallet-sdk": "1.2.0",
-    "@midnight-ntwrk/dapp-connector-api": "4.0.1"
+    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
+    "@midnight-ntwrk/ledger-v8": "8.1.1"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
