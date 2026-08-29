@@ -120,11 +120,23 @@ The circuits you need, in this order:
 
 A full draft with explanations is in [the build plan, Part 2](../Ideas/NightShift_Private_Payroll_Midnight.md#part-2--the-contract). **It has not been compiled.** Treat it as a starting point, not as correct code.
 
-### One thing to check before you trust `confirmPayment`
+### Arithmetic — already spiked, read this before writing a circuit
 
-The payment check multiplies `hours × rate`. The docs say Compact **does not silently wrap on overflow** — it aborts — and that addition widens the result type beyond the operand width.
+The lead compiled four throwaway contracts to settle how Compact arithmetic
+behaves. Full write-up: **[SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md)**. The three results that change what you write:
 
-Write a tiny throwaway contract that multiplies two `Uint<64>` values and see what the compiler actually does. **An assertion that can overflow is not an assertion.** Read [Compact arithmetic behavior](https://docs.midnight.network/guides/security-best-practices) first.
+1. **`confirmPayment` is fine as designed.** `amount == (hours as Uint<64>) * rate` compiles, and it is safe — Compact widens the product to a ~128-bit range instead of wrapping, so there is no overflow to exploit.
+2. **Never store a product.** Assigning `hours * rate` to a `Uint<64>` is a compile error, because the product's range is `Uint<0..(2^64-1)^2>`. Comparing is fine; storing needs a cast that could truncate.
+3. **Compact has no `/` or `%`.** Division is a parse error. `proveContribution` in the build plan used division and **cannot compile as written.** Restate it by cross-multiplying:
+
+```compact
+// declared == rate * pct / 100      ← impossible, no division operator
+assert(declared * 100 == rate * (contributionRate as Uint<64>), "under-declared");
+```
+
+**Rule for the whole contract: never write `/` or `%`.** Move the division to the other side as a multiplication.
+
+Also: compile with `--skip-zk` while iterating. It skips proof-key generation and turns a minutes-long build into seconds.
 
 ---
 
