@@ -385,6 +385,8 @@ That fourth one is not decoration. When a judge asks *"why is the salary a commi
 
 If you can say that in your own words, you can do this job.
 
+More of these — including the hard ones like *"why not just use a database?"* — are in **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)**. A owns the questions about circuits, commitments, and why this is not a database.
+
 ---
 
 *Practical checklist and setup: [01-contract.md](01-contract.md) · Arithmetic findings: [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md) · Full design: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md)*

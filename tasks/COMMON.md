@@ -132,6 +132,12 @@ Full detail if you want it: [NightShift build plan](../Ideas/NightShift_Private_
 
 ---
 
+## Before the demo
+
+Everyone reads **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)** — what the judges ask, what the honest answers are, and which of us answers what. Do not walk into Q&A without it.
+
+---
+
 ## Rules that apply to everyone
 
 1. **Only import the Midnight SDK (`@midnight-ntwrk/*`) inside `packages/api/`.** Never in a UI file. If you think you need it, the interface is missing something — ask.
