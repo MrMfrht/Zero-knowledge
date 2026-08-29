@@ -5,7 +5,8 @@
   "description": "Private payroll with public proof, on the Midnight Network",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "services/*"
   ],
   "engines": {
     "node": ">=22"
@@ -13,7 +14,11 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "dev:worker": "npm run dev -w @nightshift/worker-app",
+    "dev:employer": "npm run dev -w @nightshift/employer-app",
+    "dev:auditor": "npm run dev -w @nightshift/auditor",
+    "start:backend": "npm run start:dev -w @nightshift/backend"
   },
   "devDependencies": {
     "typescript": "5.7.2"
