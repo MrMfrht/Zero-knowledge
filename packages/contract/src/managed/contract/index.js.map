@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../",
+  "sources": ["src/payroll.compact", "compiler/standard-library.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EA+CA;;;;;;;;;;;;;MAaA,AAAA,IASC;;;;;cATmB,QAAiB;cAAE,gBAAyB;;;;;;;;;;;;;;;;;;;;;;;;;yCAA5C,QAAiB,+BAAE,gBAAyB;;;;;;;;;sCAA5C,QAAiB;sCAAE,gBAAyB;;;OAS/D;;;;GApBA;EAFD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IA5BA;;;;;;;;;yEAA4C;IAM5C;;;;;;;;;;yEAAoD;UAuBhD,KAAW;IAAX;;;;;;;2HAAA,KAAW;;yEAAA;;;;;;;GACd;ECjDD,AAAA,kBAAA;oEAAA;;;ED+BA,AAAA,UAA6B;;0DAA7B,OAA6B;;;;;;;;;;;;;;GAAA;EAS7B,AAAA,UAEC,CAFoB,IAAa;;mCAC0C,IAAE;GAC7E;EAkBD,AAAA,OASC,4BATmB,QAAiB,EAAE,gBAAyB;;;kEAG/B;;;;;;;;;;;uIAAW;;UAElC,GAAoB,GAAP,QAAM;qDACjB;;;;;;;;;;;4KAAkB,GAAC;;;;0HAAT;;IAElB;;;;;;;;;;2HAAkB,GAAC;;;2HAAW,gBAAc;;;wEAAlC;;GACb;;;;;;;;;;;;;;;;;;;;IAlDD;qCAAA;;;;;;;;;;;0GAA4C;KAAA;IAM5C;;;;;uCAAA;;;;;;;;;;;;;;;;4GAAoD;;;;;;uCAApD;;;;;;;;;;;;4GAAoD;;;;;;;;;;;;;;uCAApD;;;;;;;;;;;;;;;4GAAoD;;;;;;;;;;;;;;uCAApD;;;;;;;;;;;;;;;;;4GAAoD;;;;;;;;;KAAA;;;;;;;;;;"
+}

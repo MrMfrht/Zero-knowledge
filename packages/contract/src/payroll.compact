@@ -1,0 +1,70 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ---------------------------------------------------------------------------
+// NightShift — private payroll with public proof.
+//
+// Everything declared `ledger` below is PUBLIC: it lives on-chain and anyone
+// in the world can read it. So no salary appears here. What appears instead is
+// a commitment — a hash of the salary and a secret random salt — which hides
+// the number while making it impossible to change later.
+//
+// See tasks/01-contract-EXPLAINED.md for why any of this is shaped the way it is.
+// ---------------------------------------------------------------------------
+
+// --- public state ----------------------------------------------------------
+
+/// Who is allowed to hire. Derived from the deployer's secret in the
+/// constructor, and `sealed` so no later circuit can ever move it.
+export sealed ledger employerKey: Bytes<32>;
+
+/// workerKey -> persistentCommit(ratePerPeriod, salt)
+///
+/// The VALUES in a Map are public, which is exactly why a commitment goes here
+/// and not a salary. Publishing this map tells an observer nothing.
+export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
+
+// --- private input ---------------------------------------------------------
+
+/// The caller's 32-byte secret. Lives on their own device and is never
+/// transmitted. Implemented in TypeScript by the `api` package.
+witness localSk(): Bytes<32>;
+
+// --- identity --------------------------------------------------------------
+
+/// A caller's public identity: the hash of their secret.
+///
+/// `pure` because it touches no ledger state. The domain separator means the
+/// same person gets a different identity in a different app, so their activity
+/// here cannot be linked to their activity elsewhere.
+pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]);
+}
+
+// --- deployment ------------------------------------------------------------
+
+/// Whoever deploys the contract becomes the employer.
+constructor() {
+    employerKey = disclose(dappKey(localSk()));
+}
+
+// --- circuits --------------------------------------------------------------
+
+/// Seal a worker's agreed rate on-chain.
+///
+/// The employer computes `persistentCommit(rate, salt)` off-chain and passes
+/// only the result. The rate and salt themselves never reach this contract —
+/// they go to the worker directly, who checks them in `acceptHire`.
+///
+/// No funds move. A commitment commits to a *number*, not to money.
+export circuit hire(worker: Bytes<32>, rateCommitment: Bytes<32>): [] {
+    // Authenticate by proving knowledge of the employer's secret. Never by
+    // asking who the caller is — see ownPublicKey() in the explainer.
+    assert(dappKey(localSk()) == employerKey, "only the employer may hire");
+
+    const w = disclose(worker);
+    assert(!agreedRate.member(w), "this worker already has a sealed rate");
+
+    agreedRate.insert(w, disclose(rateCommitment));
+}
