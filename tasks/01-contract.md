@@ -3,7 +3,7 @@
 **You are building:** `payroll.compact` — the rules that everything else in the project obeys.
 
 **Your folder:** `packages/contract/`
-**Your branch:** `feat/contract`
+**Your branch:** `contract` (branched from `dev`)
 
 ---
 

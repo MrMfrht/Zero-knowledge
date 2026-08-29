@@ -3,7 +3,7 @@
 **You are building:** the layer that connects the smart contract to the three apps — plus you are answering the one question that could change the whole project.
 
 **Your folder:** `packages/api/`
-**Your branch:** `feat/api`
+**Your branch:** `api` (branched from `dev`)
 
 ---
 

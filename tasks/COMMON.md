@@ -35,30 +35,39 @@ Must print **v22** or higher. Node 20 crashes with the Midnight SDK — this is 
 ## 3. Get the repo and make your branch
 
 ```bash
-git clone <repo-url>
-cd nightshift
+git clone https://github.com/MrMfrht/Zero-knowledge.git
+cd Zero-knowledge
+git checkout dev          # ⚠️ IMPORTANT — see below
 npm install
 ```
 
-Now create your own branch. **Use your own name from the table:**
+> **You must switch to `dev`.** A plain `git clone` puts you on `main`, which is
+> almost empty. All the work lives on `dev`. If you cannot see a `tasks/` folder
+> and a `packages/` folder, you are on the wrong branch.
+
+Now create your own branch **off `dev`**:
 
 ```bash
-git checkout -b feat/contract        # A
-git checkout -b feat/api             # B
-git checkout -b feat/worker-app      # C
-git checkout -b feat/employer-app    # D
-git checkout -b feat/auditor         # E
+git checkout -b contract        # A
+git checkout -b api             # B
+git checkout -b worker-app      # C
+git checkout -b employer-app    # D
+git checkout -b auditor         # E
 ```
+
+When you have something working, merge back into `dev`, not into `main`.
 
 **You only edit files inside your own folder.** Nobody else touches it, and you touch nobody else's. That way we never get merge conflicts.
 
-| You | Your folder |
-|---|---|
-| A | `packages/contract/` |
-| B | `packages/api/` |
-| C | `packages/worker-app/` |
-| D | `packages/employer-app/` |
-| E | `packages/auditor/` |
+| You | Your folder | Your branch |
+|---|---|---|
+| A | `packages/contract/` | `contract` |
+| B | `packages/api/` | `api` |
+| C | `packages/worker-app/` | `worker-app` |
+| D | `packages/employer-app/` | `employer-app` |
+| E | `packages/auditor/` | `auditor` |
+
+All branches come off **`dev`** and merge back into **`dev`**.
 
 Two folders belong to nobody and are read-only for everyone: `packages/shared/` (shared types) and the interface file inside `packages/api/`. The lead maintains those. If you need something added to them, **ask** — do not edit them yourself.
 
