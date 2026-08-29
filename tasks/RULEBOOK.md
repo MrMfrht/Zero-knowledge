@@ -69,6 +69,14 @@ AI models invent Compact that looks perfect and does not compile. The official d
 
 *A wrong guess costs an hour of debugging. Looking it up costs a minute.*
 
+### 4b. If you compile contracts (A and B only): always use `--skip-zk`
+
+```bash
+compact compile --skip-zk src/payroll.compact src/managed
+```
+
+A plain `compact compile` also builds zero-knowledge proving keys — minutes, every time. `--skip-zk` checks correctness only, in seconds. Drop the flag once, at the end, when B needs the real keys.
+
 ### 5. Nothing is private just because you called it private
 
 Anything written into a `Map`, a `Set`, or a plain ledger field is **visible to the entire world**. Naming a variable `privateSalary` does not hide it.

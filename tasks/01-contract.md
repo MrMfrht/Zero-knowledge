@@ -75,6 +75,18 @@ compact compile --version # should print: 0.31.1
 
 Also install the [VS Code Compact extension](https://docs.midnight.network/compact/compilation-and-tooling/vscode-plugin).
 
+### ⚡ The one flag that saves you hours: `--skip-zk`
+
+```bash
+compact compile --skip-zk src/payroll.compact src/managed
+```
+
+A normal compile also generates zero-knowledge proving keys, which is slow — minutes, every time. `--skip-zk` skips that step and checks only that your code is **correct**, which takes seconds.
+
+**Use `--skip-zk` for every single compile while you are writing.** Drop it only when you need the real proving keys, which is when you are ready to hand `managed/` to B.
+
+You will compile dozens of times today. This flag is the difference between a fast day and a miserable one.
+
 > **Where to put the repo:** keep it inside Linux (`~/nightshift`), **not** on your Windows Desktop. Compiling across `/mnt/c` is painfully slow. Open it with VS Code's WSL extension and it feels completely normal.
 
 ---
@@ -106,6 +118,12 @@ Do this before writing anything of your own. It turns "deploy a contract" from a
 ## Step 3 — Write the contract, one circuit at a time
 
 Compile after **every single circuit.** Do not write all six and then compile — you will drown in errors.
+
+```bash
+compact compile --skip-zk src/payroll.compact src/managed
+```
+
+**Always `--skip-zk` while writing** — seconds instead of minutes. See the note in Setup.
 
 The circuits you need, in this order:
 
@@ -143,8 +161,10 @@ Also: compile with `--skip-zk` while iterating. It skips proof-key generation an
 ## Step 4 — Compile and commit the output
 
 ```bash
-compact compile packages/contract/src/payroll.compact packages/contract/src/managed
+compact compile src/payroll.compact src/managed
 ```
+
+**Note there is no `--skip-zk` here.** This is the one time you want the slow build: it produces the real zero-knowledge proving keys, which B needs. Expect it to take minutes.
 
 This produces a `managed/` folder containing TypeScript files and proof keys.
 
