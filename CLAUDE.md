@@ -15,6 +15,7 @@ Ideas/
   sealed-bidding-ideas.md          The three core concepts, in prose
   BlindBid_...md                   Sealed-bid auction build plan
   SealedRent_...md                 Private rent bidding build plan
+  NightShift_...md                 Private payroll build plan (5-person team split)
 .claude/
   README.md                        How to set up the external Midnight AI tooling
   skills/                          Repo-local skills

@@ -34,6 +34,8 @@ Described in full in [sealed-bidding-ideas.md](Ideas/sealed-bidding-ideas.md).
 
 All three are the same machine wearing different clothes.
 
+A fourth idea grew out of the same machinery: **NightShift** — payroll in shielded currency, where the agreed salary is sealed at hiring and every pay period the worker *proves* they were paid correctly, without any amount ever becoming readable. Build plan: [NightShift](Ideas/NightShift_Private_Payroll_Midnight.md).
+
 ---
 
 ## Layout
