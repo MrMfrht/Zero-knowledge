@@ -1,39 +1,58 @@
 # AI setup for this repository
 
-## What is here, what is external, and how to install the rest
+## What is installed, what is not, and how to finish the rest
 
-*Last checked 29 August 2026.*
+*Last verified 30 August 2026.*
 
-Working on Midnight with an AI assistant is a different problem from working on most stacks. Compact and the Midnight SDK are barely present in any model's training data, so an unprepared assistant does not merely make mistakes — it **invents syntax fluently and confidently**, and the code fails at compile time. The official docs open with exactly that warning.
+Working on Midnight with an AI assistant is a different problem from working on most stacks. Compact and the Midnight SDK are barely present in any model's training data, so an unprepared assistant does not merely make mistakes — it **invents syntax fluently and confidently**, and the code fails at compile time. The official docs open with that warning.
 
-The answer is layered. Three of the layers are external and maintained by other people; two are in this repository.
+The answer is layered. Here is the honest state of each layer.
 
-| Layer | Provides | Where it lives |
+| Layer | Provides | Status |
 |---|---|---|
-| **Midnight Expert** | 13 Claude Code plugins, 87 skills/commands, 17 agents. Writes Compact and **compiles it against the real compiler** before claiming success. | External — install it |
-| **Kapa MCP** | Documentation-grounded answers from the live Midnight knowledge base | External — install it |
-| **MIDSKILLS** | 28 community skills, including nine complete dApp reference implementations | External — optional |
-| **This repo's skills** | How *we* design privacy here, and how to check it | `.claude/skills/` |
-| **This repo's agents** | Research and audit subagents scoped to this project | `.claude/agents/` |
+| **MIDSKILLS** | 28 community skills + 3 runnable dApp templates + shared reference code | ✅ **Installed** in `.claude/skills/` |
+| **Kapa MCP** | Documentation-grounded answers from the live Midnight knowledge base | ✅ **Configured** in `.mcp.json` (restart Claude Code to connect) |
+| **This repo's skills** | How *we* design privacy here, and how to check it | ✅ 3 skills in `.claude/skills/` |
+| **This repo's agents** | Research and audit subagents scoped to this project | ✅ 2 agents in `.claude/agents/` |
+| **Midnight Expert** | 13 official Claude Code plugins, 87 skills/commands, 17 agents, and a real compiler-backed verifier | ❌ **Not installed — needs a manual step, see below** |
 
-The local layer deliberately does **not** duplicate the external one. It holds only what is specific to this project: our privacy constraints, our house rules, our corrections. Everything about Compact syntax, the SDK, and the toolchain belongs to Midnight Expert, which stays current and can compile.
+### What is in `.claude/skills/` now
+
+33 skill folders: 30 from MIDSKILLS plus this repo's own 3 (`midnight-privacy-design`, `compact-authoring`, `midnight-dev-setup`), and two support folders that MIDSKILLS skills read from disk:
+
+- **`references/`** — `midnight-session.md` (canonical wallet session + patched indexer provider), `gotchas.md` (preprod deploy hangs, GraphQL `offset: null`, ZK asset paths), `versions.json`, `midnight-node-architecture.md`
+- **`templates/`** — three complete runnable Next.js dApps: `leaderboard-dapp`, `locker-dapp`, `private-party-dapp`
+
+> `npx skills add` copies **only** the skill folders. It does not fetch `references/` or `templates/`, and seven of the installed skills tell the agent to read those paths. They were downloaded separately from the [repository](https://github.com/Kali-Decoder/Midnight-skills). If you reinstall the skills, fetch them again.
+
+**`references/midnight-session.md` is worth reading by hand** if you are building either frontend — it is working provider and wallet-session code, not prose.
+
+### A caution about community versions
+
+`references/versions.json` pins `@midnight-ntwrk/midnight-js-*` at **4.0.4**. The [official compatibility matrix](https://docs.midnight.network/relnotes/support-matrix) says **4.1.1**. The file itself says to cross-check the matrix first.
+
+**The official docs win, always.** MIDSKILLS is community-maintained and lags. Treat its code as a strong starting point and its version numbers as suspect.
 
 ---
 
-## 1. Midnight Expert — install this first
+## 1. Midnight Expert — the one thing still to install
 
 The official Claude Code plugin suite. [Docs](https://docs.midnight.network/ai-integration/midnight-expert) · [Marketplace](https://midnightntwrk.expert/) · [GitHub](https://github.com/midnightntwrk/midnight-expert)
 
-```bash
-curl -fsSL https://midnightntwrk.expert/install.sh | bash
-```
+**This one cannot be scripted from here.** The `claude` CLI is not on PATH in this environment (desktop-app install), so the marketplace has to be added from inside Claude Code:
 
-Or from inside Claude Code: run `/plugin`, choose *Add marketplace*, and paste `https://midnightntwrk.expert`.
+> Run **`/plugin`** → *Add marketplace* → paste **`https://midnightntwrk.expert`**
 
-Or from the CLI:
+If you have the CLI available in a terminal, this also works:
 
 ```bash
 claude plugin marketplace add https://midnightntwrk.expert
+```
+
+Or the guided installer, which must run in **bash** — so on this machine, inside WSL:
+
+```bash
+curl -fsSL https://midnightntwrk.expert/install.sh | bash
 ```
 
 > ⚠️ **macOS and Linux only. On Windows, run it inside WSL2.** This machine is Windows 11, so the installer must run from an Ubuntu WSL shell, with Claude Code launched from that same shell. Installing it from PowerShell will not work.
@@ -65,13 +84,11 @@ Marketplace releases lag GitHub by 3–5 days for community testing. To track th
 
 ---
 
-## 2. Kapa MCP — documentation-grounded answers
+## 2. Kapa MCP — already configured
 
-```bash
-claude mcp add --transport http midnight https://midnight.mcp.kapa.ai
-```
+Set up in this repo's `.mcp.json`. **Restart Claude Code once to connect.**
 
-For any other MCP client:
+If you want it in another editor (Cursor, VS Code), open the [docs site](https://docs.midnight.network/) and click **Ask AI → Use MCP** for a one-click install. Or paste this config manually:
 
 ```json
 {
@@ -92,20 +109,24 @@ It indexes the official docs, hand-picked core repositories (ledger, midnight.js
 
 ---
 
-## 3. MIDSKILLS — optional community skills
+## 3. MIDSKILLS — already installed
+
+30 skills sit in `.claude/skills/`, committed to the repo, so teammates get them by cloning. [Site](https://midskills.sevryn.xyz/home) · [GitHub](https://github.com/Kali-Decoder/Midnight-skills) · [registry](https://raw.githubusercontent.com/Kali-Decoder/Midnight-skills/main/skills.json)
+
+To refresh them later:
 
 ```bash
 npx skills add Kali-Decoder/Midnight-skills -a claude-code -y
 ```
 
-28 skills. [Site](https://midskills.sevryn.xyz/home) · [GitHub](https://github.com/Kali-Decoder/Midnight-skills) · [registry](https://raw.githubusercontent.com/Kali-Decoder/Midnight-skills/main/skills.json)
+Then re-copy `references/` and `templates/` from the repository, because that command does not fetch them.
 
-Install this if you want the nine full dApp reference implementations close at hand. The four most relevant to this project:
+The four most relevant to this project:
 
-- `example-private-reserve-auction` — hidden reserve, `persistentCommit`, `Map`
+- `example-private-reserve-auction-dapp` — hidden reserve, `persistentCommit`, `Map`
 - `example-zk-loan-application` — private credit evaluation with Schnorr attestation
 - `example-private-party-dapp` — commitment guest list, DApp-specific keys, fee sponsorship
-- `security` — privacy audit checklist and leak patterns
+- `midnight-security` — privacy audit checklist and leak patterns
 
 There is overlap with Midnight Expert. If both are installed and they disagree, **Midnight Expert wins** — it is official and it compiles what it claims.
 
@@ -131,6 +152,53 @@ Two smaller alternatives exist if you want a lighter footprint: [`midnight_agent
 | `compact-privacy-auditor` | Reviewing a contract or a design for data leaks against the visibility rules |
 
 Both are read-only. Neither writes files.
+
+---
+
+## 4b. Using a tool other than Claude Code
+
+**The skills work in GitHub Copilot, Codex, Antigravity, Cursor, and about 70 other agents.** They are already installed for all of them in this repo.
+
+| What | Portable? | Where it lives |
+|---|---|---|
+| The 30 MIDSKILLS skills | ✅ Yes | `.agents/skills/` |
+| This repo's 3 skills | ✅ Yes | `.agents/skills/` (copied) |
+| `references/` and `templates/` | ✅ Yes | `.agents/skills/` |
+| Kapa MCP server | ✅ Yes — any MCP client | see below |
+| This repo's 2 subagents | ❌ Claude Code format only | `.claude/agents/` |
+| Midnight Expert plugins | ❌ Claude Code only | not installed |
+
+`.agents/skills/` is the shared convention those tools read from, so a teammate clones the repo and their assistant finds all 33 skills with no setup. `.claude/skills/` is the Claude Code copy of the same content.
+
+### Adding an agent that is not already set up
+
+```bash
+npx skills add Kali-Decoder/Midnight-skills -a <agent> -y --copy
+```
+
+One agent per command — comma-separated names are rejected. Run `npx skills add Kali-Decoder/Midnight-skills -a x -y` with a bogus name to print the full list of 76 supported agents. Among them: `github-copilot`, `codex`, `antigravity`, `antigravity-cli`, `cursor`, `gemini-cli`, `windsurf`, `zed`, `continue`, `cline`, `roo`, `qwen-code`, `warp`, `junie`, `devin`, `opencode`, `goose`, and `universal`.
+
+After adding one, re-copy `references/` and `templates/` into its skills directory — the installer never fetches them.
+
+### Kapa MCP outside Claude Code
+
+Cursor and VS Code: open [docs.midnight.network](https://docs.midnight.network/), click **Ask AI → Use MCP**, then **Add to Cursor** or **Add to VS Code**. One click.
+
+Anything else that speaks MCP — Copilot in VS Code, Codex, Antigravity — takes the same config as `.mcp.json` in this repo:
+
+```json
+{
+  "mcpServers": {
+    "midnight": { "type": "http", "url": "https://midnight.mcp.kapa.ai" }
+  }
+}
+```
+
+### What non-Claude users give up
+
+Only **Midnight Expert**, and specifically `/midnight-verify:verify` — the command that compiles a real test contract to confirm or refute a claim about Compact. There is no equivalent elsewhere.
+
+The practical substitute is the discipline already in [the rule book](../tasks/RULEBOOK.md): **compile before you believe it.** `compact compile` is the ground truth for everyone regardless of which assistant they use.
 
 ---
 

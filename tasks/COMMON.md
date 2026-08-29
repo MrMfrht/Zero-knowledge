@@ -64,16 +64,19 @@ Two folders belong to nobody and are read-only for everyone: `packages/shared/` 
 
 ---
 
-## 4. Set up AI help
+## 4. AI help — mostly already done
 
-You do not need Claude Code. You do need something, because **AI models invent Compact syntax that looks correct and does not compile.** The official docs open with that exact warning.
+**You do not need Claude Code.** 33 Midnight skills are already committed to this repo, and your assistant picks them up automatically when you clone.
 
-Pick one:
+They work in **GitHub Copilot, Codex, Antigravity, Cursor, Gemini CLI, Windsurf, Zed, Cline, Roo, Continue** and about 70 other tools — they all read the same `.agents/skills/` folder. Nothing to install.
 
-- **Easiest:** go to [docs.midnight.network](https://docs.midnight.network/) and use the **Ask AI** button. Works in the browser, no setup.
-- **Better:** on that same site click **Ask AI → Use MCP → Add to Cursor** (or VS Code). One click. Now your editor answers from the real documentation.
+Two things worth doing yourself:
 
-**Rule for everyone: never guess at Midnight or Compact syntax. Look it up or ask.** A wrong guess costs an hour of debugging.
+**Add the Midnight docs server to your editor.** Go to [docs.midnight.network](https://docs.midnight.network/) → **Ask AI → Use MCP → Add to Cursor** (or VS Code). One click, and your assistant answers from the real documentation instead of guessing. Any MCP-capable tool works — the config is in `.mcp.json` at the repo root if you need to paste it manually.
+
+**Or just use the Ask AI button** on that site. Browser, no setup, works for everyone.
+
+> **The one rule: never guess at Midnight or Compact syntax.** AI models invent Compact that looks perfect and does not compile — the official docs open with that exact warning. Looking it up costs a minute; guessing costs an hour.
 
 New to Midnight? [academy.midnight.network](https://academy.midnight.network/) has short guided lessons. Worth 30 minutes.
 
