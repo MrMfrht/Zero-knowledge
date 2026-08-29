@@ -3,7 +3,7 @@
 **You are building:** the app an employee or contractor uses. They accept a job offer, and each payday they confirm they were paid correctly.
 
 **Your folder:** `packages/worker-app/`
-**Your branch:** `feat/worker-app`
+**Your branch:** `worker-app` (branched from `dev`)
 
 ---
 

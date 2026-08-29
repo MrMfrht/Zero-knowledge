@@ -3,7 +3,7 @@
 **You are building:** the screen that proves the whole project works. A public board showing every worker and every month as ✅ or ✗ — **with no login, no wallet, and no permission of any kind.**
 
 **Your folder:** `packages/auditor/`
-**Your branch:** `feat/auditor`
+**Your branch:** `auditor` (branched from `dev`)
 
 ---
 
