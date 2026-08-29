@@ -61,7 +61,7 @@ Ideas/
   NightShift_Kickoff_Task_Board.md        First-day task board and blockers
 .claude/
   README.md                               AI tooling setup for this repo
-  skills/                                 midnight-privacy-design, compact-authoring, midnight-dev-setup
+  skills/                                 33 skills (30 MIDSKILLS + 3 ours) + references/ + templates/
   agents/                                 midnight-docs-researcher, compact-privacy-auditor
 CLAUDE.md                                 Repo conventions for AI assistants
 ```

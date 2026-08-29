@@ -57,7 +57,7 @@ Two things belong to nobody: `packages/shared/` and the `PayrollApi` interface. 
 
 AI models invent Compact that looks perfect and does not compile. The official docs open with that exact warning.
 
-Use the **Ask AI** button on [docs.midnight.network](https://docs.midnight.network/), or add Kapa MCP to your editor (Ask AI → Use MCP → Add to Cursor / VS Code).
+33 Midnight skills are already in this repo and load automatically in Copilot, Codex, Antigravity, Cursor and ~70 other tools. Beyond those, use the **Ask AI** button on [docs.midnight.network](https://docs.midnight.network/), or add the docs MCP server to your editor (Ask AI → Use MCP).
 
 *A wrong guess costs an hour of debugging. Looking it up costs a minute.*
 

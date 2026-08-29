@@ -20,7 +20,9 @@ Ideas/
   NightShift_Kickoff_Task_Board.md First-day task board: who starts what, and when
 .claude/
   README.md                        How to set up the external Midnight AI tooling
-  skills/                          Repo-local skills
+  skills/                          33 skills: 30 from MIDSKILLS + 3 repo-local
+  skills/references/               Canonical wallet-session code, gotchas, versions
+  skills/templates/                3 runnable Next.js dApp scaffolds
   agents/                          Repo-local subagents
 ```
 
