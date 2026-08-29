@@ -1,10 +1,10 @@
 # Zero-knowledge
 
-Planning repository for privacy-preserving **sealed-bidding** applications on the [Midnight Network](https://docs.midnight.network/).
+**NightShift** — private payroll with public proof, built on the [Midnight Network](https://docs.midnight.network/).
 
-Everything here is currently markdown. No code yet — by design.
+> **The idea in one line:** get paid in private, prove it in public.
 
-> **The idea in one line:** hide the inputs, publish the rule, prove the outcome.
+Team members: go straight to **[tasks/COMMON.md](tasks/COMMON.md)**, then open your own task file.
 
 ---
 
@@ -15,26 +15,33 @@ Everything here is currently markdown. No code yet — by design.
 | Understand Midnight from zero, in plain language | [docs/midnight-explained.md](docs/midnight-explained.md) → [part 2](docs/midnight-explained-part2.md) → [part 3](docs/midnight-explained-part3.md) |
 | Know what Midnight *actually* keeps private | [docs/midnight-privacy-model.md](docs/midnight-privacy-model.md) |
 | Find the right page in the official docs | [docs/midnight-docs-map.md](docs/midnight-docs-map.md) |
-| See the product ideas | [Ideas/sealed-bidding-ideas.md](Ideas/sealed-bidding-ideas.md) |
-| Build the auction | [Ideas/BlindBid_Closed_Private_Auction_Midnight.md](Ideas/BlindBid_Closed_Private_Auction_Midnight.md) |
-| Build the rent bidding | [Ideas/SealedRent_Private_Rent_Bidding_Midnight.md](Ideas/SealedRent_Private_Rent_Bidding_Midnight.md) |
+| Understand the project we are building | [Ideas/NightShift_Private_Payroll_Midnight.md](Ideas/NightShift_Private_Payroll_Midnight.md) |
+| **Start work — pick your task** | **[tasks/COMMON.md](tasks/COMMON.md)** |
+| The team rules, on one page | [tasks/RULEBOOK.md](tasks/RULEBOOK.md) |
+| See the whole plan and team split | [Ideas/NightShift_Kickoff_Task_Board.md](Ideas/NightShift_Kickoff_Task_Board.md) |
 | Set up AI tooling for this repo | [.claude/README.md](.claude/README.md) |
 
-If you read only one file, read [the privacy model](docs/midnight-privacy-model.md). It contains the constraint that reshapes every design here: **`Map` and `Set` values are public on Midnight**, so a bid written into one is not sealed at all.
+If you read only one file, read [the privacy model](docs/midnight-privacy-model.md). It contains the constraint that reshapes every design here: **`Map` and `Set` values are public on Midnight**, so a number written into one is not hidden at all.
 
 ---
 
-## The three ideas
+## The project
 
-Described in full in [sealed-bidding-ideas.md](Ideas/sealed-bidding-ideas.md).
+**NightShift — private payroll with public proof.**
 
-1. **The closed auction** — every bid secret, the winner provable, losing bids never revealed. Build plan: [BlindBid](Ideas/BlindBid_Closed_Private_Auction_Midnight.md).
-2. **Sealed rent bidding** — offers hidden from everyone including the landlord, one refundable deposit backing applications to many flats, winning one automatically drops you from the rest, and everyone else gets their money back. Build plan: [SealedRent](Ideas/SealedRent_Private_Rent_Bidding_Midnight.md).
-3. **The secret reserve marketplace** — a hidden minimum meets a hidden offer; if they overlap, the deal executes, and if they do not, nothing is revealed to anyone.
+An employer pays workers in Midnight's shielded currency, so amounts are hidden from everyone. At hiring, both sides seal the agreed rate into an on-chain **commitment** — a scrambled value that hides the number and can never be opened to a different one. Every pay period the worker confirms receipt by proving, inside a zero-knowledge circuit, that what arrived matches the sealed agreement.
 
-All three are the same machine wearing different clothes.
+The ledger records exactly one public fact per period: **paid correctly, or not confirmed.** No salary figure is ever readable by anyone.
 
-A fourth idea grew out of the same machinery: **NightShift** — payroll in shielded currency, where the agreed salary is sealed at hiring and every pay period the worker *proves* they were paid correctly, without any amount ever becoming readable. Build plan: [NightShift](Ideas/NightShift_Private_Payroll_Midnight.md).
+Three more products fall out of that same trail for free:
+
+- **A verifiable employment history the worker owns** — join date, leave date, continuity, all written month by month at the time, by both parties.
+- **Proof that social-security contributions were calculated on the real salary** — closing a fraud that workers currently cannot check at all.
+- **Hourly and contractor verification** — the rate stays sealed while `hours × rate` is proven correct. Salaried is the same circuit with `hours = 1`.
+
+The demo is the failure case: an employer underpays, and the worker is *unable* to confirm it even if they wanted to. The period stays permanently unconfirmed on a public ledger while the real salary stays unreadable.
+
+Build plan: [NightShift](Ideas/NightShift_Private_Payroll_Midnight.md) · First-day tasks: [Kickoff task board](Ideas/NightShift_Kickoff_Task_Board.md)
 
 ---
 
@@ -45,10 +52,13 @@ docs/
   midnight-explained{,-part2,-part3}.md   Plain-language explainer series
   midnight-docs-map.md                    Annotated index of the Midnight documentation
   midnight-privacy-model.md               What Midnight hides — and the design constraints
+tasks/
+  RULEBOOK.md                             One-page team rules — keep this open
+  COMMON.md                               Setup everyone does first — start here
+  01-contract.md … 05-auditor.md          One file per person
 Ideas/
-  sealed-bidding-ideas.md                 The three concepts, in prose
-  BlindBid_...md                          Sealed-bid auction build plan
-  SealedRent_...md                        Private rent bidding build plan
+  NightShift_Private_Payroll_Midnight.md  The build plan: idea, contract, team split
+  NightShift_Kickoff_Task_Board.md        First-day task board and blockers
 .claude/
   README.md                               AI tooling setup for this repo
   skills/                                 midnight-privacy-design, compact-authoring, midnight-dev-setup
@@ -58,9 +68,15 @@ CLAUDE.md                                 Repo conventions for AI assistants
 
 ---
 
-## Before writing any code
+## Does my machine need anything special?
 
-Two things settle first:
+**Only if you compile smart contracts.** The Compact compiler is Linux and macOS only — there is no Windows build.
 
-1. **WSL2.** Midnight does not support Windows natively, and neither does the official Claude Code plugin suite. This decides where the repo physically lives. See [Part 5 of the docs map](docs/midnight-docs-map.md#part-5--the-windows-problem).
-2. **The mechanism.** Commit-and-reveal, clear-a-hidden-bar, or predicate proof. They are not interchangeable and the choice cannot be deferred — it determines the contract, the UI, and what the product is allowed to claim. See [Part 3 of the privacy model](docs/midnight-privacy-model.md#part-3--the-sealed-bid-problem).
+| Role | Needs WSL (Windows users)? |
+|---|---|
+| A — Contract, B — Integration | **Yes** — or GitHub Codespaces, which is free and browser-based |
+| C — Worker app, D — Employer app, E — Auditor | **No.** Node.js 22+ and a normal editor |
+
+Three of the five roles never touch the compiler. They import the contract as ordinary TypeScript, which A commits after building it.
+
+Setup instructions live in each person's task file. Start at **[tasks/COMMON.md](tasks/COMMON.md)**.

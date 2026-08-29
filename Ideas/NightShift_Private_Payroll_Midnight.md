@@ -444,4 +444,4 @@ Step 6 is the demo. Everything before it is setup; everything after it is conseq
 
 ---
 
-*Companions: [privacy model](../docs/midnight-privacy-model.md) · [docs map](../docs/midnight-docs-map.md) · [BlindBid](BlindBid_Closed_Private_Auction_Midnight.md) · [SealedRent](SealedRent_Private_Rent_Bidding_Midnight.md) · [.claude setup](../.claude/README.md)*
+*Companions: [kickoff task board](NightShift_Kickoff_Task_Board.md) · [privacy model](../docs/midnight-privacy-model.md) · [docs map](../docs/midnight-docs-map.md) · [engineering standards](../CLAUDE.md) · [.claude setup](../.claude/README.md)*

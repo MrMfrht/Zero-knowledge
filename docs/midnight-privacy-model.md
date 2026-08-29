@@ -191,7 +191,7 @@ Two windows, enforced by `blockTimeLt` / `blockTimeGte` against sealed deadlines
 
 The seller commits a reserve at construction (`sealed ledger hiddenPrice`). Bidders commit their offers. In the reveal window, **only bids that clear the reserve are ever opened** — everything below the bar stays sealed permanently and the failed bidders learn nothing about how far off they were.
 
-This is Idea 3 in [sealed-bidding-ideas.md](../Ideas/sealed-bidding-ideas.md), the Secret Reserve Marketplace, and it is the mechanism the official example is halfway toward. It is strictly more private than Mechanism A on the losing side, at the cost of an outcome that is "deal or no deal" rather than "highest wins".
+This is the "secret reserve marketplace" shape — a hidden minimum meets a hidden offer, and if they overlap the deal executes while nothing is revealed if they do not. It is the mechanism the official [Private Reserve Auction](https://docs.midnight.network/examples/contracts/private-reserve-auction) example is halfway toward. Strictly more private than Mechanism A on the losing side, at the cost of an outcome that is "deal or no deal" rather than "highest wins".
 
 ### Mechanism C — Compete on proven qualifications, never on price
 
@@ -220,39 +220,39 @@ This is the [ZK Loan DApp](https://docs.midnight.network/examples/dapps/zkloan) 
 | Fails if participants go offline | Yes — needs deposit forfeiture | Yes | No |
 | Strongest claim | "Highest bid provably won" | "A deal existed, or nothing was exposed" | "Selection provably ignored who you are" |
 
-**C is the safest to build and A is the most impressive.** Both project plans here use **A** as the core, because sealed price competition is the product: [BlindBid](../Ideas/BlindBid_Closed_Private_Auction_Midnight.md) for a one-shot auction, [SealedRent](../Ideas/SealedRent_Private_Rent_Bidding_Midnight.md) for a market where one deposit backs offers on many listings. C appears in SealedRent as an optional qualification filter layered on top of A — the landlord may require applicants to prove they qualify before they are allowed to bid.
+**C is the safest to build and A is the most impressive.** Pick by asking what has to stay hidden *after* the outcome is known.
 
-One consequence of choosing A that is easy to miss: **the winning value always becomes public**, because someone has to open a commitment for the comparison to happen. Only the losers stay sealed. If the winning number must also stay private, A is the wrong mechanism and the design needs B or C instead.
+[NightShift](../Ideas/NightShift_Private_Payroll_Midnight.md), the project being built here, is a **variant of C**: there is no competition and therefore no reveal phase at all. The agreed salary is committed once at hiring, and every later payment is checked against that commitment inside the circuit. Nothing is ever opened publicly, so no amount becomes readable at any point in the product's life — the strongest privacy of the three, and the least machinery.
+
+One consequence of choosing A that is easy to miss: **the winning value always becomes public**, because someone has to open a commitment before anything can compare it. Only the losers stay sealed. If the winning number must also stay private, A is the wrong mechanism and the design needs B or C.
 
 ---
 
-# Part 4 — Corrections to earlier documents in this repository
+# Part 4 — Two mistakes worth not repeating
 
-The idea documents in `Ideas/` were written before this research. They are directionally right and two specific claims in them need adjusting. Recorded here rather than silently edited, because the reasoning matters more than the correction.
+Both of these were made in this repository's own earlier planning documents, caught by the research above, and are recorded here because the reasoning generalises to any new design.
 
-### Correction 1 — "Even the metadata is hidden"
+### Mistake 1 — "Fees are shielded, so nobody can count participants"
 
-[sealed-bidding-ideas.md](../Ideas/sealed-bidding-ideas.md) says, of the closed auction:
+The claim was that because Midnight's fees are paid by burning invisible DUST rather than by visible payments, observers cannot count how many submissions arrived or when.
 
-> "Because Midnight's fees are paid by burning invisible DUST rather than by visible payments, observers cannot even count how many bids arrived or when."
+The DUST half is right: fee payment is shielded and reveals nothing. But **the contract call itself is a public transaction**. The visibility table in Part 1 is explicit that the contract address, the entry point, and the block timing are all observable. An observer counts submissions by counting calls to the circuit.
 
-The DUST half is right: fee payment is shielded and reveals nothing. But **the contract call itself is a public transaction**. The visibility table is explicit that the contract address, the entry point, and the block timing are all observable. An observer counts bids by counting calls to the `bid` circuit.
+**What is true instead:** observers see *that* N submissions arrived and roughly when, and nothing about their contents or who made them. Hiding the count as well is possible — insert into a `MerkleTree`, the one ledger operation that hides its argument, or accept decoy submissions — but it is a deliberate extra design step, not a free property of the chain.
 
-**What is true instead:** observers see *that* N bids arrived and roughly when, and nothing about their contents or who made them. Hiding the count as well is possible — insert into a `MerkleTree`, which is the one ledger operation that hides its argument, or accept decoy submissions — but it is a deliberate extra design step, not a free property of the chain.
+The version that survives scrutiny: **participation and timing leak; content does not.** For most of the fraud these designs target — the phantom competing offer, the peeking clerk, the quietly altered outcome — content is what matters. Say the leak out loud rather than letting a judge find it.
 
-The stronger version of the claim, and the one that survives scrutiny: **a late flood of bids is visible; what those bids say is not.** For most of the fraud these products target — the phantom competing offer, the peeking clerk, the quietly altered outcome — the content is what matters.
+### Mistake 2 — Calling a value "private" because the variable name says so
 
-### Correction 2 — "Private bid" in the BlindBid plan
+An earlier auction plan described `placeBid()` as recording a private bid. Built on the official [Private Reserve Auction](https://docs.midnight.network/examples/contracts/private-reserve-auction) example, **the bids would have been public**, because that example writes them into a `Map` — its own variable is called `publicBid` for exactly that reason.
 
-[BlindBid](../Ideas/BlindBid_Closed_Private_Auction_Midnight.md) describes `placeBid()` as recording a private bid, and lists a five-call lifecycle: `createAuction` → `placeBid` → `closeAuction` → `settleAuction` → `claimRefund`.
-
-If that is built on top of the official auction example, **the bids will be public**, because that example publishes them. To deliver what the pitch promises, `placeBid` must store a `persistentCommit(amount, salt)` and the lifecycle needs a **sixth call and a second window**:
+The fix was not cosmetic. Storing `persistentCommit(amount, salt)` instead requires a second window and an extra circuit, because a commitment has to be *opened* before anything can compare it:
 
 ```
-createAuction → commitBid → [bid window closes] → revealBid → closeAuction → settle → claimRefund
+create → commit → [window closes] → reveal → settle
 ```
 
-This is a small change to the plan and a large change to the claim. Worth making before any code is written, because retrofitting a reveal phase means rewriting both the contract and the UI.
+A small change to the plan and a large change to the claim. The general lesson: **check every "this is private" sentence against the visibility table before it reaches a README.** Naming a variable `privateX` and writing it to a `Map` publishes it just as loudly as naming it `publicX`. This is what the [`compact-privacy-auditor`](../.claude/agents/compact-privacy-auditor.md) agent exists to catch.
 
 ---
 

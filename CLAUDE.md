@@ -11,11 +11,13 @@ docs/
   midnight-explained-part3.md      Living fully inside Midnight; compliance
   midnight-docs-map.md             Annotated index of every Midnight doc worth reading
   midnight-privacy-model.md        What Midnight actually hides — the design constraints
+tasks/
+  RULEBOOK.md                      One-page team rules
+  COMMON.md                        Shared setup; one task file per team member
+  01-contract.md … 05-auditor.md   Per-person briefs (WSL needed / not needed)
 Ideas/
-  sealed-bidding-ideas.md          The three core concepts, in prose
-  BlindBid_...md                   Sealed-bid auction build plan
-  SealedRent_...md                 Private rent bidding build plan
   NightShift_...md                 Private payroll build plan (5-person team split)
+  NightShift_Kickoff_Task_Board.md First-day task board: who starts what, and when
 .claude/
   README.md                        How to set up the external Midnight AI tooling
   skills/                          Repo-local skills
