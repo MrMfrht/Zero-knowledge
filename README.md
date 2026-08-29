@@ -17,6 +17,7 @@ Team members: go straight to **[tasks/COMMON.md](tasks/COMMON.md)**, then open y
 | Find the right page in the official docs | [docs/midnight-docs-map.md](docs/midnight-docs-map.md) |
 | Understand the project we are building | [Ideas/NightShift_Private_Payroll_Midnight.md](Ideas/NightShift_Private_Payroll_Midnight.md) |
 | **Start work — pick your task** | **[tasks/COMMON.md](tasks/COMMON.md)** |
+| Understand the code folders | [packages/README.md](packages/README.md) |
 | The team rules, on one page | [tasks/RULEBOOK.md](tasks/RULEBOOK.md) |
 | See the whole plan and team split | [Ideas/NightShift_Kickoff_Task_Board.md](Ideas/NightShift_Kickoff_Task_Board.md) |
 | Set up AI tooling for this repo | [.claude/README.md](.claude/README.md) |

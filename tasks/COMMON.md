@@ -82,16 +82,30 @@ New to Midnight? [academy.midnight.network](https://academy.midnight.network/) h
 
 ---
 
-## 5. Wait for one thing from the lead
+## 5. Read the API guide
 
-The lead is pushing two things to `main`:
+The lead has already pushed the two packages everything else is built on:
 
 - `packages/shared/` — the shared TypeScript types
-- `packages/api/` — the `PayrollApi` interface **and a fake version of it**
+- `packages/api/` — the `PayrollApi` interface **and a working fake of it**
 
-The fake version is important. It means **C, D and E can build their entire app without the smart contract existing.** You call `payrollApi.confirmPayment(...)` and get sensible fake data back. Later B replaces the fake with the real thing, and your code does not change at all.
+**New to this folder? Start with [packages/README.md](../packages/README.md)** — it explains what `src` and `dist` are, why there are two folders, and how to run it. Three minutes.
 
-Until that lands, C/D/E can still scaffold their app and build screens with hardcoded data.
+**→ Then [packages/api/README.md](../packages/api/README.md) is the guide. It has a section for each of C, D, E and B, with real code you can paste.**
+
+The fake matters: **C, D and E can build their entire app today, without the smart contract existing.** You call `api.confirmPayment(...)` and get real behaviour back — including the failure case, which the mock enforces exactly as the contract will. When B finishes the real version, you change one line and nothing else.
+
+Try it right now:
+
+```bash
+npm install && npm run build
+```
+
+```ts
+import { MockPayrollApi, DEMO_SAM } from '@nightshift/api';
+const api = new MockPayrollApi({ actingAs: DEMO_SAM });
+console.log((await api.getEmploymentRecord(DEMO_SAM)).periods);
+```
 
 ---
 

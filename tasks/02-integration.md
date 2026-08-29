@@ -60,24 +60,27 @@ Do not start Step 2 until you have an answer.
 
 ---
 
+> **Your specification: [packages/api/README.md](../packages/api/README.md)** — the "For B" section maps every interface method to A's contract circuits, lists which error to throw when an assertion fails, and gives your definition of done.
+
 ## Step 2 — Build the real API
 
-The lead has already put an interface and a **fake version** into `packages/api/`. It looks roughly like this:
+The lead has already written the interface and a working fake:
 
-```typescript
-export interface PayrollApi {
-  hire(workerKey: string, sealedRate: string): Promise<void>;
-  acceptHire(rate: bigint, salt: string): Promise<void>;
-  approveHours(workerKey: string, period: number, hours: number): Promise<void>;
-  confirmPayment(period: number, hours: number, rate: bigint, salt: string,
-                 amountReceived: bigint): Promise<void>;
-  getHistory(workerKey: string): Promise<PeriodStatus[]>;
-}
-```
+- **`packages/api/src/PayrollApi.ts`** — the interface. Eleven methods. Read it; it is commented.
+- **`packages/api/src/mock/MockPayrollApi.ts`** — reference behaviour. It enforces the same rules the contract will, so read it before you start: it tells you exactly what your version has to do.
+- **`packages/api/src/errors.ts`** — the error classes the apps catch by type.
 
 C, D and E are already building against the fake one.
 
-**Your job: write a real version that satisfies the exact same interface.** Do not change the interface. If you genuinely need to change it, talk to the lead and everyone at once — it is the one file that affects all five of us.
+**Your job: write a real version that satisfies the exact same interface.**
+
+**You do not change `PayrollApi.ts`.** The lead owns it, because three apps are already built against it. When the contract cannot do what a method promises — and it will happen at least once — do this instead:
+
+1. Do not bend the interface quietly. A method that silently behaves differently from the mock is worse than one that is missing.
+2. Report it with specifics: which method, which circuit, what the contract can and cannot do, what you would change.
+3. The lead updates the interface, the mock and the README together, and tells everyone in one message.
+
+The README's [Version 1 section](../packages/api/README.md#version-1--what-is-stable-and-what-will-change) lists six rough edges we already know about — check it before reporting, yours may already be there.
 
 What the real version does:
 

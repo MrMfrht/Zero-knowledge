@@ -84,6 +84,8 @@ Same board, different column: was the declared contribution calculated on the re
 
 ---
 
+> **Your API guide: [packages/api/README.md](../packages/api/README.md)** — the "For E" section shows how to get the whole board in three lines. `DEMO_SAM` is seeded with an unconfirmed month for styling the ✗ state.
+
 ## How to start today
 
 ```bash
