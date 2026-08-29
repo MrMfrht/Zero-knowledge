@@ -198,6 +198,45 @@ try {
 
 Notice you do **not** pass the rate or the salt. The api reads them from the device. Keep it that way.
 
+### Prove a social-security contribution (the NSSF check)
+
+Wherever contributions are a percentage of *declared* salary, the classic fraud
+is an employer declaring less than they actually pay. The worker sees a
+deduction on a payslip and has no way to check what was really remitted — until
+a pension claim fails years later.
+
+The sealed salary closes that, because it was committed at hiring, before anyone
+had a reason to lie.
+
+```ts
+import { ContributionMismatchError } from '@nightshift/api';
+
+try {
+  await api.proveContribution({ period: '2026-04', declared: 1250n });
+  show('✅ Contribution verified against your real salary');
+} catch (e) {
+  if (e instanceof ContributionMismatchError) {
+    show('The declared contribution was not calculated on your real salary.');
+  }
+}
+```
+
+`declared` is the figure the employer reported to the fund. The check is
+`declared === sealedRate × contributionRate ÷ 100`, done in zero knowledge — the
+salary is never revealed, to the fund or to anyone else.
+
+The seeded mock uses a contribution rate of **25%**, so for `DEMO_KARIM` on
+5000 the correct declaration is `1250n`. Try `1000n` to see the failure state.
+
+Once it succeeds, `contributionVerified` flips to `true` on that period, which is
+what E renders on the auditor board:
+
+```ts
+for (const p of record.periods) {
+  p.contributionVerified;   // boolean — show a badge, or a warning if false
+}
+```
+
 ### The privacy panel
 
 Everything on the left comes from `getEmploymentRecord`. Everything on the right you simply do not have access to — and neither does anyone else.
