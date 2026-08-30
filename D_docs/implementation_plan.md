@@ -680,4 +680,4 @@ Say these out loud rather than letting a judge find them:
 
 ---
 
-*Rules: [CLAUDE.md](../CLAUDE.md) · [rule book](../tasks/RULEBOOK.md) · D's task: [04-employer-app.md](../tasks/04-employer-app.md) · Why any of this is private: [01-contract-EXPLAINED.md](../tasks/01-contract-EXPLAINED.md)*
+*Rules: [CLAUDE.md](../CLAUDE.md) · [rule book](../tasks/RULEBOOK.md) · D's task: [04-employer-app.md](../tasks/04-employer-app.md) · Why any of this is private: [01-contract-EXPLAINED.md](../A_docs/01-understanding-the-contract.md)*

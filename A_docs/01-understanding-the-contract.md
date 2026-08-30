@@ -1,6 +1,6 @@
 # Understanding the contract — from zero
 
-*For A, and for anyone who wants to understand what we are actually building. No blockchain knowledge assumed. Read this before [01-contract.md](01-contract.md), which is the practical checklist.*
+*For A, and for anyone who wants to understand what we are actually building. No blockchain knowledge assumed. Read this before [01-contract.md](../tasks/01-contract.md), which is the practical checklist.*
 
 ---
 
@@ -119,13 +119,6 @@ Your own computer does the check, and produces a mathematical PROOF
               never saw your salary. Nobody did.
 ```
 
-<<<<<<< HEAD
-A **circuit** is a function in the contract, but it runs **on your own machine**. What gets sent to the network is not your data — it is a proof that says *"I ran this function honestly and the answer was yes."*
-
-The network can verify that proof is genuine without ever seeing what went into it. That is what "zero-knowledge" means: the network learns the **result** and zero **knowledge** about the inputs.
-
-This is real mathematics, not obfuscation. The network genuinely cannot see the inputs, even if it wanted to.
-=======
 ### The definition
 
 > **A circuit is a function that, when it runs, also produces a receipt — a mathematical proof that it ran exactly as written and every check inside it passed.**
@@ -145,7 +138,6 @@ That has one practical consequence worth knowing now:
 > **A circuit has a fixed shape.** No loops of unknown length, no arrays of unknown size. Everything must be a known size when the contract is compiled, because the equations have to be written out in advance.
 
 This is also where "block limits are hard limits, not gas costs" comes from. A circuit is either small enough to run or it cannot run at all — there is no paying extra to make it fit.
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 ## Witnesses — the private inputs
 
@@ -177,12 +169,6 @@ So every `disclose()` in the contract is a deliberate decision to make something
 
 ---
 
-<<<<<<< HEAD
-# Part 3 — Why `ownPublicKey()` must never check who is calling
-
-This is the rule that sounds most arbitrary, and it is the most important one.
-
-=======
 ---
 
 # Part 3 — The question everyone asks, and the answer that makes it all click
@@ -352,7 +338,6 @@ This is the rule that sounds most arbitrary, and it is the most important one.
 
 *Part 3 explained **why** it fails. This part is the practical version: what to write instead.*
 
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 ## The problem
 
 The contract needs to know who is calling. Only the employer may hire. Only Karim may confirm Karim's payments.
@@ -397,11 +382,7 @@ Two bonuses:
 
 ---
 
-<<<<<<< HEAD
-# Part 4 — Why each circuit exists
-=======
 # Part 5 — Why each circuit exists
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 Six circuits. Each solves one specific problem. Here is the problem first, then the circuit.
 
@@ -514,7 +495,7 @@ export circuit proveContribution(period: Uint<32>, declared: Uint<64>,
 }
 ```
 
-Why `declared * 100 == rate * pct` instead of `declared == rate * pct / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md). Multiplying both sides by 100 says the same thing without dividing.
+Why `declared * 100 == rate * pct` instead of `declared == rate * pct / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [SPIKE-ARITHMETIC.md](04-compact-arithmetic.md). Multiplying both sides by 100 says the same thing without dividing.
 
 The power here comes from *when* the commitment was made: at hiring, before anyone had a reason to lie.
 
@@ -534,11 +515,7 @@ Nothing is deleted. His last confirmed month becomes his leaving date, and the w
 
 ---
 
-<<<<<<< HEAD
-# Part 5 — The whole contract in one picture
-=======
 # Part 6 — The whole contract in one picture
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 ```
    PUBLIC BOARD (anyone on earth can read this)
@@ -572,20 +549,13 @@ Nothing is deleted. His last confirmed month becomes his leaving date, and the w
 
 ---
 
-<<<<<<< HEAD
-# Part 6 — What A actually does with all this
-=======
 # Part 7 — What A actually does with all this
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 Now the job makes sense:
 
 1. **Write the six circuits**, one at a time, compiling after each with `--skip-zk`.
 2. **Test that the failures fail** — a wrong salt, a wrong rate, a wrong amount. The *rejections* are the product. Test them first.
-<<<<<<< HEAD
-=======
 2b. **Ask the anchor question of every circuit before moving on**: *what stops the caller choosing inputs that make every assertion pass?* If there is no clear answer, the circuit is decorative — see [Part 3](#part-3--the-question-everyone-asks-and-the-answer-that-makes-it-all-click).
->>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 3. **Compile for real once** (no `--skip-zk`) and commit `managed/`, so C, D and E can use the contract without installing anything.
 4. **Be able to explain the above out loud.**
 
@@ -595,8 +565,8 @@ That fourth one is not decoration. When a judge asks *"why is the salary a commi
 
 If you can say that in your own words, you can do this job.
 
-More of these — including the hard ones like *"why not just use a database?"* — are in **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)**. A owns the questions about circuits, commitments, and why this is not a database.
+More of these — including the hard ones like *"why not just use a database?"* — are in **[JUDGE-QUESTIONS.md](../tasks/JUDGE-QUESTIONS.md)**. A owns the questions about circuits, commitments, and why this is not a database.
 
 ---
 
-*Practical checklist and setup: [01-contract.md](01-contract.md) · Arithmetic findings: [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md) · Full design: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md)*
+*Practical checklist and setup: [01-contract.md](../tasks/01-contract.md) · Arithmetic findings: [SPIKE-ARITHMETIC.md](04-compact-arithmetic.md) · Full design: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md)*

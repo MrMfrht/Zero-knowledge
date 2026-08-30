@@ -9,7 +9,7 @@ One page. Read it once, keep it open.
 | You are | Your file | Your folder | Your branch | Need WSL? |
 |---|---|---|---|---|
 | **A** — Contract | [01-contract.md](01-contract.md) | `packages/contract/` | `contract` | **YES** |
-| **B** — Integration | [02-integration.md](02-integration.md) | `packages/api/` | `api` | **YES** |
+| **B** — Integration | [02-integration.md](02-integration.md) · [status](02-integration-STATUS.md) | `packages/api/` | `api` | **YES** |
 | **C** — Worker app | [03-worker-app.md](03-worker-app.md) | `packages/worker-app/` | `worker-app` | **No** |
 | **D** — Employer app | [04-employer-app.md](04-employer-app.md) | `packages/employer-app/` | `employer-app` | **No** |
 | **E** — Auditor view | [05-auditor.md](05-auditor.md) | `packages/auditor/` | `auditor` | **No** |
@@ -22,9 +22,20 @@ Only the two people who compile smart contracts need WSL. Everyone else works no
 
 New here? Start with [COMMON.md](COMMON.md), then open your own file.
 
-Want to understand *why* any of this works — salts, commitments, zero-knowledge, in plain language? **[01-contract-EXPLAINED.md](01-contract-EXPLAINED.md)**. Written for A, useful to everyone.
+**Not sure how the pieces fit?** [THE-FLOW.md](THE-FLOW.md) walks the whole app
+start to finish — which app calls which API method, which circuit runs, whose
+secret is used, and what becomes public at each step. Ten minutes, written for
+everyone.
+
+**Two folders are not your scope unless they are yours:** `A_docs/` is deep contract
+detail for A, `D_docs/` is the backend plan for D. Ignore them otherwise — your task
+file and [packages/api/README.md](../packages/api/README.md) are everything you need.
+
+Want to understand *why* any of this works — salts, commitments, zero-knowledge, in plain language? **[01-contract-EXPLAINED.md](../A_docs/01-understanding-the-contract.md)**. Written for A, useful to everyone.
 
 Before the demo, everyone reads **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)** — the questions judges actually ask, honest answers, and who on the team answers what.
+
+Also skim **[A_docs/06-open-design-questions.md](../A_docs/06-open-design-questions.md)** — the known gaps in the design. Anything still marked OPEN is something a judge could find, so we say it first. Three of them affect C, D and B directly.
 
 Writing code? Read **[packages/README.md](../packages/README.md)** first (what the folders are, three minutes), then **[packages/api/README.md](../packages/api/README.md)** — the API guide, one section per person.
 

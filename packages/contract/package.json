@@ -1,0 +1,18 @@
+{
+  "name": "@nightshift/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compact": "compact compile --skip-zk src/payroll.compact src/managed",
+    "compact:full": "compact compile src/payroll.compact src/managed",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
+  },
+  "devDependencies": {
+    "typescript": "5.7.2"
+  }
+}
