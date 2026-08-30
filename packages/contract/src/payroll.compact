@@ -25,6 +25,14 @@ export sealed ledger employerKey: Bytes<32>;
 /// and not a salary. Publishing this map tells an observer nothing.
 export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
 
+/// workerKey -> is this person currently employed?
+///
+/// Three states, deliberately:
+///   absent  — the employer has made an offer, the worker has not accepted yet
+///   true    — accepted and currently employed
+///   false   — employment ended (set by `endEmployment`; history is never deleted)
+export ledger active: Map<Bytes<32>, Boolean>;
+
 // --- private input ---------------------------------------------------------
 
 /// The caller's 32-byte secret. Lives on their own device and is never
@@ -68,4 +76,32 @@ export circuit hire(worker: Bytes<32>, rateCommitment: Bytes<32>): [] {
     assert(!agreedRate.member(w), "this worker already has a sealed rate");
 
     agreedRate.insert(w, disclose(rateCommitment));
+}
+
+/// The worker checks that the sealed rate really is the number they were told,
+/// then accepts the job.
+///
+/// This circuit exists because a commitment is unreadable. The employer could
+/// promise 5000 and seal 4000, and the worker would have no way to tell — until
+/// payday, when nothing would add up. So before starting work, the worker
+/// reproduces the commitment from the rate and salt they were actually given
+/// and checks it against what is on-chain.
+///
+/// A mismatch fails the transaction. The worker finds out on day zero, not on
+/// payday.
+///
+/// Only this worker can call this for themselves: `k` is derived from the
+/// caller's own secret, so nobody can accept on anyone else's behalf.
+export circuit acceptHire(rate: Uint<64>, salt: Bytes<32>): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(agreedRate.member(k), "no offer has been made to you");
+    assert(!active.member(k), "you have already accepted this offer");
+
+    // The anchor. `rate` and `salt` come from the worker's own machine, so on
+    // their own they prove nothing — but only the original pair can reproduce
+    // the commitment the employer already published.
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "the sealed rate does not match the rate and salt you were given");
+
+    active.insert(k, true);
 }

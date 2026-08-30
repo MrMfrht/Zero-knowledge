@@ -27,7 +27,7 @@ can use the contract without installing the Compact toolchain.
 | Circuit | Status | What it does |
 |---|---|---|
 | `hire` | ✅ compiles | Employer seals a worker's agreed rate — **[documented](../../A_docs/02-files-and-the-typescript-bridge.md)** |
-| `acceptHire` | not yet | Worker verifies the seal matches what they were told |
+| `acceptHire` | ✅ compiles | Worker verifies the seal matches what they were told |
 | `approveHours` | not yet | Employer approves a timesheet |
 | `confirmPayment` | not yet | Worker proves the payment matched the sealed rate |
 | `proveContribution` | not yet | Proves social security used the real salary |

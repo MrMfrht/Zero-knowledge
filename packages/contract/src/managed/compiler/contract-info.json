@@ -28,6 +28,32 @@
         "types": [
         ]
       }
+    },
+    {
+      "name": "acceptHire",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "rate",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
     }
   ],
   "witnesses": [
@@ -66,6 +92,19 @@
       "value": {
         "type-name": "Bytes",
         "length": 32
+      }
+    },
+    {
+      "name": "active",
+      "index": 2,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Boolean"
       }
     }
   ]
