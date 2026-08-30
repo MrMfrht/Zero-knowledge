@@ -2,7 +2,7 @@
 
 This repo builds **NightShift** — private payroll with public proof, on the **Midnight Network**.
 
-It is now in implementation. The workspace skeleton, `packages/shared/`, and `packages/api/` (interface + mock) exist. The Compact contract does not yet. Follow the Engineering standards below, and check [tasks/RULEBOOK.md](tasks/RULEBOOK.md) for who owns which folder before editing anything.
+It is now in implementation. The workspace skeleton, `packages/shared/`, `packages/api/` (interface + mock), and `packages/contract/` all exist — **all six circuits compile and the full lifecycle is smoke-tested** (`npm run smoke -w @nightshift/contract`). What does not exist yet: the real `MidnightPayrollApi` (B), the three apps (C, D, E), and the backend. Follow the Engineering standards below, and check [tasks/RULEBOOK.md](tasks/RULEBOOK.md) for who owns which folder before editing anything.
 
 ## Layout
 
@@ -17,12 +17,16 @@ packages/
   README.md                        What src/dist mean, why two folders — read first
   shared/                          Domain types. No Midnight imports, ever.
   api/                             PayrollApi interface + mock. README.md is the team guide.
+  contract/                        payroll.compact (6 circuits), witnesses.ts, managed/, smoke.mjs
 A_docs/                            Deep contract detail — A only. README.md is the index
 D_docs/                            Backend implementation plan — D only
 tasks/
   RULEBOOK.md                      One-page team rules
   COMMON.md                        Shared setup; one task file per team member
   01-contract.md … 05-auditor.md   Per-person briefs (WSL needed / not needed)
+  02-integration-STATUS.md         B's live done/todo list
+  THE-FLOW.md                      The whole app start to finish — for everyone
+  JUDGE-QUESTIONS.md               Demo Q&A prep
 Ideas/
   NightShift_...md                 Private payroll build plan (5-person team split)
   NightShift_Kickoff_Task_Board.md First-day task board: who starts what, and when

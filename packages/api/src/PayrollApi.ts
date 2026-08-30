@@ -199,8 +199,9 @@ export interface PayrollApi {
   /**
    * Prove a social-security contribution was calculated on the real salary.
    *
-   * Checks `declared === sealedRate × contributionRate / 100` in zero knowledge.
-   * Records only whether it held. The salary stays sealed.
+   * Checks `declared === hours × sealedRate × contributionRate / 100` in zero
+   * knowledge — the real earnings for the period, with hours read from the
+   * ledger. Records only whether it held. The salary stays sealed.
    *
    * Throws {@link ContributionMismatchError} if the employer under-declared.
    */

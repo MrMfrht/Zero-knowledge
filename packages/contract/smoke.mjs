@@ -61,6 +61,8 @@ console.log('acceptHire(5000, salt): seal opens, Karim active ✅');
 mustFail('Karim approving his own hours', () => run(karim, 'approveHours', karimKey, 1n, 1n));
 run(employer, 'approveHours', karimKey, 1n, 1n); // period 1, hours 1 (salaried)
 console.log('approveHours(period 1, hours 1) ✅');
+mustFail('RE-approving period 1 with different hours (rewriting the anchor)',
+  () => run(employer, 'approveHours', karimKey, 1n, 99n));
 
 // ─── Step 8: confirmPayment (Karim) — THE PRODUCT ───────────────────────────
 mustFail('confirming an UNDERPAYMENT of 4000  ← THE DEMO',
@@ -77,12 +79,20 @@ mustFail('an UNDER-DECLARED contribution of 1000',
 run(karim, 'proveContribution', 1n, RATE, SALT, 1250n);
 console.log('proveContribution(1250 = 25% of real earnings): contributionOk ✓ ✅');
 
+// ─── A second period: proves periodKey(worker, 1) ≠ periodKey(worker, 2) ────
+// If the Uint<32> → Bytes<32> cast inside periodKey collapsed distinct periods
+// to one key, this approve would hit "already approved" and the confirm
+// "already confirmed". Both succeeding is the behavioural proof they differ.
+run(employer, 'approveHours', karimKey, 2n, 1n);
+run(karim, 'confirmPayment', 2n, RATE, SALT, 5000n);
+console.log('period 2 approved + confirmed alongside period 1 — distinct periodKeys ✅');
+
 // ─── Circuit 6: endEmployment (employer) ────────────────────────────────────
 mustFail('Karim ending his own employment', () => run(karim, 'endEmployment', karimKey));
 run(employer, 'endEmployment', karimKey);
 console.log('endEmployment: active=false, history intact ✅');
 mustFail('approving hours AFTER employment ended',
-  () => run(employer, 'approveHours', karimKey, 2n, 1n));
+  () => run(employer, 'approveHours', karimKey, 3n, 1n));
 mustFail('ending employment twice', () => run(employer, 'endEmployment', karimKey));
 
 // ─── The final ledger, as any auditor (E) would read it ─────────────────────

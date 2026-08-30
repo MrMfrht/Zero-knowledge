@@ -36,17 +36,40 @@ This is the news. Everything `MidnightPayrollApi` needs from A now exists:
 | Compiled contract — TS bindings + ledger types | `packages/contract/src/managed/contract/` |
 | Circuits compiled | **All six** — plus exported `pureCircuits.dappKey(sk)` and `pureCircuits.sealRate(rate, salt)`, which are exactly the helpers your api needs. Note: the constructor now takes `contributionPct` (e.g. `25n`) |
 | **`witnesses.ts`** — supplies `localSk`, storage-agnostic | `packages/contract/src/witnesses.ts` |
-| Proof it all runs | `npm run smoke -w @nightshift/contract` — deploys locally, hires as employer, rejects a stranger |
+| Proof it all runs | `npm run smoke -w @nightshift/contract` — the whole lifecycle over two periods, plus every rejection |
 | The map of who calls what | [`A_docs/07-circuit-map.md`](../A_docs/07-circuit-map.md) |
+
+**Two signatures worth checking against the bindings before you write them**,
+because they are easy to guess wrong:
+
+- `confirmPayment(period, rate, salt, amountReceived)` — **`hours` is not an
+  argument.** The circuit reads it from the ledger, which is what stops a worker
+  inflating their own timesheet. If you pass hours, it will not compile.
+- `proveContribution(period, rate, salt, declared)` — and the check is against
+  real earnings, `declared × 100 == hours × rate × pct`, not against the bare
+  rate. For salaried workers (`hours = 1`) those coincide; for hourly workers
+  they do not. `MockPayrollApi` now does exactly this too, so the mock and the
+  chain agree.
+
+`approveHours` is also **write-once** as of 2026-08-30 — approving a period that
+already has hours is rejected. If your UI lets an employer edit an approved
+timesheet, that call will fail on-chain; surface it as a real error rather than
+retrying.
 
 Construct with:
 
 ```ts
-import { Contract, ledger } from '@nightshift/contract/src/managed/contract/index.js';
-import { witnesses, createPayrollPrivateState } from '@nightshift/contract/src/witnesses.js';
+import { Contract, ledger, pureCircuits } from '@nightshift/contract/src/managed/contract/index.js';
+import { witnesses, createPayrollPrivateState } from '@nightshift/contract/src/witnesses.ts';
 
 const contract = new Contract(witnesses);
 ```
+
+Note the second import ends in `.ts`, not `.js`: the contract package ships no
+build step, so `witnesses.ts` exists only as source. Vite and `tsx` resolve that
+fine. Plain `node` will not — which is why `smoke.mjs` inlines the one-line
+witness instead of importing it. If you would rather import it everywhere,
+say so and A will add a build to the contract package.
 
 Read `smoke.mjs` in the contract package first — it is a working example of
 constructing the contract, building contexts, and calling a circuit.

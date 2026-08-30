@@ -51,7 +51,8 @@ preference you saved last week.
 ## Where the secret came from in the first place
 
 Generated **once**, randomly, the first time that person used the app, and saved
-in encrypted local storage — the same way a password manager holds passwords.
+in the browser's local storage. (Plain local storage today; encrypting it is a
+decided next step, recorded in [A_docs/05](05-keys-storage-and-identity.md).)
 
 Nobody sent it to them. They never send it anywhere. It is created locally and
 it stays locally, for its whole life.

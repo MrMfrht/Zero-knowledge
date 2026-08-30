@@ -10,21 +10,21 @@ happens when an employer clicks "Hire".*
 
 # Part 1 — A tour of the files
 
-You will see nine files in `packages/contract/`. Only **one** of them is written
-by a person. Here is every one:
+Here is everything in `packages/contract/`, and who wrote it:
 
 | File | What it is | Written by | Do you edit it? |
 |---|---|---|---|
-| **`src/payroll.compact`** | **The rules.** The only file a human writes | **A (us)** | **Yes — this is the work** |
-| `package.json` | Two build commands | us | Rarely |
+| **`src/payroll.compact`** | **The rules.** All six circuits | **A (us)** | **Yes — this is the work** |
+| `src/witnesses.ts` | Hands the caller's secret to a circuit (Part 6) | us | Rarely |
+| `smoke.mjs` | The whole lifecycle, run locally | us | When circuits change |
+| `package.json` | The build and smoke commands | us | Rarely |
+| `tsconfig.json` | TypeScript settings | us | No |
 | `README.md` | How to build it | us | Sometimes |
-| `SPIKE-ARITHMETIC.md` | What we learned about Compact maths | us | No, it is a record |
-| `CIRCUIT-1-HIRE.md` | This document | us | — |
 | `src/managed/contract/index.js` | The contract, translated into JavaScript | **the compiler** | **Never** |
 | `src/managed/contract/index.d.ts` | The instruction sheet for other programmers | **the compiler** | **Never** |
 | `src/managed/contract/index.js.map` | A debugging aid | the compiler | Never |
 | `src/managed/compiler/contract-info.json` | A summary of what was built | the compiler | Never |
-| `src/managed/zkir/hire.zkir` | **The maths.** The circuit itself | **the compiler** | **Never** |
+| `src/managed/zkir/*.zkir` | **The maths.** One file per circuit — six of them | **the compiler** | **Never** |
 
 Two things worth saying plainly:
 
@@ -32,9 +32,13 @@ Two things worth saying plainly:
 change something. It is regenerated from scratch every time we compile. If it
 ever looks wrong, delete the folder and rebuild — nothing is lost.
 
-**One human file, eight generated ones.** That ratio is normal, and it is why
-the `.compact` file gets so much care. Every mistake in it is copied faithfully
-into everything else.
+**Six human files, and everything else generated.** That ratio is normal, and it
+is why the `.compact` file gets so much care. Every mistake in it is copied
+faithfully into everything else.
+
+*(Two documents that used to live in this folder have moved:
+`SPIKE-ARITHMETIC.md` is now [A_docs/04](04-compact-arithmetic.md), and
+`CIRCUIT-1-HIRE.md` is this document.)*
 
 ## What is in the generated files, really
 
@@ -299,8 +303,13 @@ const witnesses = {
 };
 ```
 
-It reads the secret from encrypted local storage and hands it back. **This value
-never leaves the machine.** It is used to compute, and then it is gone.
+It reads the secret from the browser's local storage and hands it back. **This
+value never leaves the machine.** It is used to compute, and then it is gone.
+
+*(Today that storage is plain, not encrypted — see
+[A_docs/05](05-keys-storage-and-identity.md). Encrypting it via
+`level-private-state-provider` is the next step, and does not change anything
+above: the secret still never crosses a network.)*
 
 ## Step 6 — The circuit checks the rules
 
@@ -390,13 +399,13 @@ Everything sensitive stays in the top box. Only a proof crosses the line.
 
 ---
 
-# Part 6 — What does not exist yet
+# Part 6 — The file that fills the hole: `witnesses.ts`
 
-`witnesses.ts` — the file that fills the hole from Part 4 — **has not been
-written.** The generated instruction sheet demands it, so the contract cannot
-run until it exists.
+*(This section used to say "not written yet". It is written, it lives at
+[`packages/contract/src/witnesses.ts`](../packages/contract/src/witnesses.ts),
+and `smoke.mjs` runs the whole lifecycle through it.)*
 
-It is small, roughly:
+It is small, and this is genuinely all of it:
 
 ```ts
 export const witnesses = {
@@ -404,8 +413,16 @@ export const witnesses = {
 };
 ```
 
-Whether it lives here or in `packages/api` is a decision to make with B, since
-they own the wiring. It is the next practical step after the circuits.
+Two things about that one line. It returns a **pair**: the private state
+(possibly updated — ours never changes, so it is handed straight back) and the
+value the circuit asked for. And it is storage-agnostic on purpose: it reads
+whatever `privateState` it was handed, so the same file works whether the secret
+came from browser storage today or a wallet-derived key later. B decides that in
+`packages/api`; the contract does not care.
+
+The real file adds one guard — a secret that is not exactly 32 bytes is rejected
+at construction, because the alternative is a failure much deeper in the proof
+system with a far worse error message.
 
 ---
 

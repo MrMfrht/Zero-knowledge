@@ -193,10 +193,73 @@ Tracked so it does not get silently skipped.
 
 ---
 
+## 🟠 12. The same worker shows the same key to every employer — OPEN
+
+**Found in the privacy audit of 2026-08-30, not by us writing the code.**
+
+`dappKey` mixes the caller's secret with one fixed word, `"nightshift:pk:"`. That
+word is baked into the contract, so it is identical in **every** NightShift
+deployment. Since each employer deploys their own contract, a worker with two
+employers appears in both public ledgers under the **same** `Bytes<32>` key.
+
+Two employers — or anyone reading the indexer, which is everyone — can therefore
+join on that key and learn that one person works for both, plus each
+relationship's timeline. That is the relationship graph the pseudonyms exist to
+hide, and it is exactly what the comment above `dappKey` used to claim was
+impossible. The comment has been corrected; the behaviour has not.
+
+**Why it survived review:** the domain separator genuinely does separate
+NightShift from *other apps*. It just does not separate NightShift from itself.
+
+**The fix.** Mix a per-deployment value — the contract's own address, or a value
+the employer supplies at deployment — into the hash, so one secret yields a
+different public key per employer. It is a change to one `pure circuit`, but it
+changes every key on the ledger, so it has to happen before anything real is
+deployed, and B's `getMyKey()` must change with it or nothing matches.
+
+**For the demo:** with one employer on stage, nothing about it is visible. If a
+judge asks what happens with two employers, answer honestly — this is the gap,
+here is the one-line fix, we did not want to change key derivation the night
+before.
+
+---
+
+## ✅ 13. `approveHours` could rewrite an approved timesheet — FIXED 2026-08-30
+
+**Found in the same audit. This one was serious, and it is now closed.**
+
+`approveHours` wrote to the ledger with no check that the period was already
+approved — the only map write in the contract that lacked one. Because
+`confirmPayment` *reads* hours from that map as its anchor, an employer could:
+approve 20 hours, pay for 10, then re-approve the period as 10 hours before the
+worker confirmed. The worker's app would read 10, the arithmetic would balance,
+and a genuine underpayment would be recorded as **paid ✓** — the precise outcome
+the headline claim says is impossible.
+
+**Fixed** by adding the guard every sibling circuit already had:
+
+```compact
+assert(!approvedHours.member(pk), "hours already approved for this period");
+```
+
+`smoke.mjs` now proves it: re-approving period 1 with different hours is
+rejected. Timesheets are write-once, so both sides are pinned — the worker never
+supplies hours, and the employer cannot revise them after the fact.
+
+**Consequence worth knowing:** a genuine mistake in an approval is now permanent
+for that period. Given the alternative was a silent fraud path, that is the right
+trade, but it is a real product constraint — an employer who fat-fingers hours
+cannot fix that period, and the recourse is off-chain.
+
+---
+
 # The three to fix if there is time
 
 1. **Question 2** — the salt in a plaintext message undoes the product's headline claim
 2. **Question 3** — an employer suppressing evidence by doing nothing is the sharpest attack on the demo
 3. **Question 1** — key substitution, and it is nearly free to mitigate with a QR code
+
+Question 12 sits just behind them: it is invisible in a one-employer demo, but it
+is the one an experienced privacy person will ask about.
 
 Everything else is safe to ship with a sentence of honesty.

@@ -297,11 +297,16 @@ try {
 ```
 
 `declared` is the figure the employer reported to the fund. The check is
-`declared === sealedRate × contributionRate ÷ 100`, done in zero knowledge — the
-salary is never revealed, to the fund or to anyone else.
+`declared === hours × sealedRate × contributionRate ÷ 100` — the worker's real
+**earnings** for that period, not just the rate — done in zero knowledge; the
+salary is never revealed, to the fund or to anyone else. (The contract writes it
+as a cross-multiplication, `declared × 100 == hours × rate × pct`, because
+Compact has no division operator.)
 
-The seeded mock uses a contribution rate of **25%**, so for `DEMO_KARIM` on
-5000 the correct declaration is `1250n`. Try `1000n` to see the failure state.
+The seeded mock uses a contribution rate of **25%**. `DEMO_KARIM` is salaried
+(hours = 1), so on 5000 the correct declaration is `1250n`. Try `1000n` to see
+the failure state. For hourly workers the right figure changes every period —
+`DEMO_DANA` in January is 40 h × 85 × 25% = `850n`.
 
 Once it succeeds, `contributionVerified` flips to `true` on that period, which is
 what E renders on the auditor board:
@@ -439,8 +444,8 @@ export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
 | `hire()` | `hire(worker, rateCommitment)` | You generate the salt and compute the commitment |
 | `approveHours()` | `approveHours(worker, period, hours)` | |
 | `acceptOffer()` | `acceptHire(rate, salt)` | Store rate+salt in private state on success |
-| `confirmPayment()` | `confirmPayment(period, hours, rate, salt, amount)` | Read rate+salt from private state |
-| `proveContribution()` | `proveContribution(period, declared, rate, salt)` | |
+| `confirmPayment()` | `confirmPayment(period, rate, salt, amountReceived)` | Read rate+salt from private state. `hours` is **not** an argument — the circuit reads it from the ledger, so a worker can never claim hours the employer did not approve |
+| `proveContribution()` | `proveContribution(period, rate, salt, declared)` | Same argument order as the bindings — check `managed/contract/index.d.ts` |
 | `endEmployment()` | `endEmployment(worker)` | |
 | `getEmploymentRecord()` | — | Read via the **indexer**, not a circuit |
 | `listEmploymentRecords()` | — | Indexer |

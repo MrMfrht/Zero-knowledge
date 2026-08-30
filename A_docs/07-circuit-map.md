@@ -110,7 +110,10 @@ export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>
     assert(active.member(w), "this worker has not accepted an offer");
     assert(active.lookup(w), "this worker's employment has ended");
 
-    approvedHours.insert(disclose(periodKey(w, period)), disclose(hours));
+    const pk = disclose(periodKey(w, period));
+    assert(!approvedHours.member(pk), "hours already approved for this period");
+
+    approvedHours.insert(pk, disclose(hours));
 }
 ```
 
@@ -122,7 +125,28 @@ Line by line:
    not the employer's.
 2. **Sanity:** the worker must have accepted (`active.member`) and still be
    employed (`active.lookup` is `true` — remember `false` means "ended").
-3. **The write:** hours go into a public map.
+3. **Write-once.** See below — this line is load-bearing.
+4. **The write:** hours go into a public map.
+
+## Why the write-once guard matters more than it looks
+
+A privacy audit caught this line missing, and it was the most serious finding in
+the contract. `confirmPayment` does not take `hours` as an argument — it *reads*
+them from this map, and that is the whole reason a worker cannot inflate their
+timesheet. But an anchor only works if it cannot move.
+
+Without the guard: the employer approves 20 hours, pays for 10, and then
+re-approves the same period as 10 hours before the worker confirms. The worker's
+app reads 10, `10 × rate` matches the money that arrived, and a real
+underpayment is recorded as **paid ✓**. The headline claim — the system cannot
+record a wrong payment as correct — would have been false, through the one map
+that was writable twice.
+
+With it, timesheets are immutable once approved. Neither side can move the
+number: the worker never supplies it, the employer cannot revise it. The
+honest cost is that a mistaken approval is permanent for that period; the
+recourse is off-chain. That trade is recorded as
+[question 13](06-open-design-questions.md).
 
 ## Two design details worth understanding
 

@@ -82,21 +82,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('hire',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 120 char 1',
+                                     'payroll.compact line 123 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(worker_0.buffer instanceof ArrayBuffer && worker_0.BYTES_PER_ELEMENT === 1 && worker_0.length === 32)) {
           __compactRuntime.typeError('hire',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 120 char 1',
+                                     'payroll.compact line 123 char 1',
                                      'Bytes<32>',
                                      worker_0)
         }
         if (!(rateCommitment_0.buffer instanceof ArrayBuffer && rateCommitment_0.BYTES_PER_ELEMENT === 1 && rateCommitment_0.length === 32)) {
           __compactRuntime.typeError('hire',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'payroll.compact line 120 char 1',
+                                     'payroll.compact line 123 char 1',
                                      'Bytes<32>',
                                      rateCommitment_0)
         }
@@ -127,21 +127,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('acceptHire',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 145 char 1',
+                                     'payroll.compact line 148 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(rate_0) === 'bigint' && rate_0 >= 0n && rate_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('acceptHire',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 145 char 1',
+                                     'payroll.compact line 148 char 1',
                                      'Uint<0..18446744073709551616>',
                                      rate_0)
         }
         if (!(salt_0.buffer instanceof ArrayBuffer && salt_0.BYTES_PER_ELEMENT === 1 && salt_0.length === 32)) {
           __compactRuntime.typeError('acceptHire',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'payroll.compact line 145 char 1',
+                                     'payroll.compact line 148 char 1',
                                      'Bytes<32>',
                                      salt_0)
         }
@@ -173,28 +173,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('approveHours',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 170 char 1',
+                                     'payroll.compact line 173 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(worker_0.buffer instanceof ArrayBuffer && worker_0.BYTES_PER_ELEMENT === 1 && worker_0.length === 32)) {
           __compactRuntime.typeError('approveHours',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 170 char 1',
+                                     'payroll.compact line 173 char 1',
                                      'Bytes<32>',
                                      worker_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('approveHours',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'payroll.compact line 170 char 1',
+                                     'payroll.compact line 173 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
         if (!(typeof(hours_0) === 'bigint' && hours_0 >= 0n && hours_0 <= 4294967295n)) {
           __compactRuntime.typeError('approveHours',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'payroll.compact line 170 char 1',
+                                     'payroll.compact line 173 char 1',
                                      'Uint<0..4294967296>',
                                      hours_0)
         }
@@ -228,35 +228,35 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('confirmPayment',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 197 char 1',
+                                     'payroll.compact line 208 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('confirmPayment',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 197 char 1',
+                                     'payroll.compact line 208 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
         if (!(typeof(rate_0) === 'bigint' && rate_0 >= 0n && rate_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('confirmPayment',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'payroll.compact line 197 char 1',
+                                     'payroll.compact line 208 char 1',
                                      'Uint<0..18446744073709551616>',
                                      rate_0)
         }
         if (!(salt_0.buffer instanceof ArrayBuffer && salt_0.BYTES_PER_ELEMENT === 1 && salt_0.length === 32)) {
           __compactRuntime.typeError('confirmPayment',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'payroll.compact line 197 char 1',
+                                     'payroll.compact line 208 char 1',
                                      'Bytes<32>',
                                      salt_0)
         }
         if (!(typeof(amountReceived_0) === 'bigint' && amountReceived_0 >= 0n && amountReceived_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('confirmPayment',
                                      'argument 4 (argument 5 as invoked from Typescript)',
-                                     'payroll.compact line 197 char 1',
+                                     'payroll.compact line 208 char 1',
                                      'Uint<0..18446744073709551616>',
                                      amountReceived_0)
         }
@@ -291,35 +291,35 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('proveContribution',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 244 char 1',
+                                     'payroll.compact line 255 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(period_0) === 'bigint' && period_0 >= 0n && period_0 <= 4294967295n)) {
           __compactRuntime.typeError('proveContribution',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 244 char 1',
+                                     'payroll.compact line 255 char 1',
                                      'Uint<0..4294967296>',
                                      period_0)
         }
         if (!(typeof(rate_0) === 'bigint' && rate_0 >= 0n && rate_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('proveContribution',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'payroll.compact line 244 char 1',
+                                     'payroll.compact line 255 char 1',
                                      'Uint<0..18446744073709551616>',
                                      rate_0)
         }
         if (!(salt_0.buffer instanceof ArrayBuffer && salt_0.BYTES_PER_ELEMENT === 1 && salt_0.length === 32)) {
           __compactRuntime.typeError('proveContribution',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'payroll.compact line 244 char 1',
+                                     'payroll.compact line 255 char 1',
                                      'Bytes<32>',
                                      salt_0)
         }
         if (!(typeof(declared_0) === 'bigint' && declared_0 >= 0n && declared_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('proveContribution',
                                      'argument 4 (argument 5 as invoked from Typescript)',
-                                     'payroll.compact line 244 char 1',
+                                     'payroll.compact line 255 char 1',
                                      'Uint<0..18446744073709551616>',
                                      declared_0)
         }
@@ -351,14 +351,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('endEmployment',
                                      'argument 1 (as invoked from Typescript)',
-                                     'payroll.compact line 275 char 1',
+                                     'payroll.compact line 286 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(worker_0.buffer instanceof ArrayBuffer && worker_0.BYTES_PER_ELEMENT === 1 && worker_0.length === 32)) {
           __compactRuntime.typeError('endEmployment',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'payroll.compact line 275 char 1',
+                                     'payroll.compact line 286 char 1',
                                      'Bytes<32>',
                                      worker_0)
         }
@@ -417,7 +417,7 @@ export class Contract {
     if (!(typeof(contributionPct_0) === 'bigint' && contributionPct_0 >= 0n && contributionPct_0 <= 255n)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 1 (argument 2 as invoked from Typescript)',
-                                 'payroll.compact line 105 char 1',
+                                 'payroll.compact line 108 char 1',
                                  'Uint<0..256>',
                                  contributionPct_0)
     }
@@ -570,7 +570,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('localSk',
                                  'return value',
-                                 'payroll.compact line 68 char 1',
+                                 'payroll.compact line 69 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -592,7 +592,7 @@ export class Contract {
                                    worker_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         period_0,
-                                                                        'payroll.compact line 97 char 49')]);
+                                                                        'payroll.compact line 100 char 49')]);
   }
   _hire_0(context, partialProofData, worker_0, rateCommitment_0) {
     __compactRuntime.assert(this._equal_0(this._dappKey_0(this._localSk_0(context,
@@ -776,7 +776,24 @@ export class Contract {
                                                                                        { popeq: { cached: false,
                                                                                                   result: undefined } }]).value),
                             "this worker's employment has ended");
-    const tmp_0 = this._periodKey_0(w_0, period_0);
+    const pk_0 = this._periodKey_0(w_0, period_0);
+    __compactRuntime.assert(!_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                       partialProofData,
+                                                                                       [
+                                                                                        { dup: { n: 0 } },
+                                                                                        { idx: { cached: false,
+                                                                                                 pushPath: false,
+                                                                                                 path: [
+                                                                                                        { tag: 'value',
+                                                                                                          value: { value: _descriptor_4.toValue(2n),
+                                                                                                                   alignment: _descriptor_4.alignment() } }] } },
+                                                                                        { push: { storage: false,
+                                                                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(pk_0),
+                                                                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
+                                                                                        'member',
+                                                                                        { popeq: { cached: true,
+                                                                                                   result: undefined } }]).value),
+                            'hours already approved for this period');
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
                                       [
@@ -787,7 +804,7 @@ export class Contract {
                                                          value: { value: _descriptor_4.toValue(2n),
                                                                   alignment: _descriptor_4.alignment() } }] } },
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(tmp_0),
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(pk_0),
                                                                                               alignment: _descriptor_0.alignment() }).encode() } },
                                        { push: { storage: true,
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_2.toValue(hours_0),
@@ -1251,7 +1268,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'payroll.compact line 26 char 1',
+                                     'payroll.compact line 27 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1280,7 +1297,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'payroll.compact line 26 char 1',
+                                     'payroll.compact line 27 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1360,7 +1377,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'payroll.compact line 36 char 1',
+                                     'payroll.compact line 37 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1389,7 +1406,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'payroll.compact line 36 char 1',
+                                     'payroll.compact line 37 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1483,7 +1500,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'payroll.compact line 45 char 1',
+                                     'payroll.compact line 46 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1512,7 +1529,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'payroll.compact line 45 char 1',
+                                     'payroll.compact line 46 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1592,7 +1609,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'payroll.compact line 54 char 1',
+                                     'payroll.compact line 55 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1621,7 +1638,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'payroll.compact line 54 char 1',
+                                     'payroll.compact line 55 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1701,7 +1718,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'payroll.compact line 62 char 1',
+                                     'payroll.compact line 63 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1730,7 +1747,7 @@ export function ledger(stateOrChargedState) {
         if (!(key_0.buffer instanceof ArrayBuffer && key_0.BYTES_PER_ELEMENT === 1 && key_0.length === 32)) {
           __compactRuntime.typeError('lookup',
                                      'argument 1',
-                                     'payroll.compact line 62 char 1',
+                                     'payroll.compact line 63 char 1',
                                      'Bytes<32>',
                                      key_0)
         }
@@ -1776,7 +1793,7 @@ export const pureCircuits = {
     if (!(sk_0.buffer instanceof ArrayBuffer && sk_0.BYTES_PER_ELEMENT === 1 && sk_0.length === 32)) {
       __compactRuntime.typeError('dappKey',
                                  'argument 1',
-                                 'payroll.compact line 77 char 1',
+                                 'payroll.compact line 80 char 1',
                                  'Bytes<32>',
                                  sk_0)
     }
@@ -1791,14 +1808,14 @@ export const pureCircuits = {
     if (!(typeof(rate_0) === 'bigint' && rate_0 >= 0n && rate_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('sealRate',
                                  'argument 1',
-                                 'payroll.compact line 84 char 1',
+                                 'payroll.compact line 87 char 1',
                                  'Uint<0..18446744073709551616>',
                                  rate_0)
     }
     if (!(salt_0.buffer instanceof ArrayBuffer && salt_0.BYTES_PER_ELEMENT === 1 && salt_0.length === 32)) {
       __compactRuntime.typeError('sealRate',
                                  'argument 2',
-                                 'payroll.compact line 84 char 1',
+                                 'payroll.compact line 87 char 1',
                                  'Bytes<32>',
                                  salt_0)
     }

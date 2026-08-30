@@ -61,7 +61,8 @@ All four were verified by compiling, not read from a blog post:
 2. **Never use `ownPublicKey()` to check who is calling.** It is a witness — the
    caller's own machine decides what it returns. Identity comes from
    `persistentHash([pad(32, "nightshift:pk:"), localSk()])`.
-3. **Never write `/` or `%`.** Compact has no division operator. Cross-multiply:
-   `declared * 100 == rate * pct`.
+3. **Never write `/` or `%`.** Compact has no division operator. Cross-multiply —
+   and against real **earnings**, not the bare rate:
+   `declared * 100 == hours * rate * pct`.
 4. **`disclose()` does not hide anything.** It is the opposite — it tells the
    compiler "yes, publish this."

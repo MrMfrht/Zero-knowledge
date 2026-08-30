@@ -92,9 +92,16 @@ Keep it to three sentences.
 
 ## "Where do the private keys and salts live?"
 
-> On the user's own device, in encrypted local storage. They are never transmitted. Our backend never receives one.
+> On the user's own device, in browser local storage. They are never transmitted. Our backend never receives one.
 >
 > That is not a policy — it is the architecture. If a server held a salt, that server could read the salary, and the product would be a normal payroll app with extra steps.
+
+**If they push on "local storage":** be straight about it. Today it is *plain*
+local storage, so anyone with the unlocked device could read it. The upgrade is
+Midnight's own `level-private-state-provider`, which encrypts it behind a
+password — a swap in one place, since `witnesses.ts` does not care where the
+secret comes from. What does **not** change either way is the part that matters:
+the secret never crosses a network, so no server of ours can ever read a salary.
 
 ## "What happens if someone loses their salt?"
 

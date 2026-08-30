@@ -157,9 +157,14 @@ behaves. Full write-up: **[SPIKE-ARITHMETIC.md](../A_docs/04-compact-arithmetic.
 3. **Compact has no `/` or `%`.** Division is a parse error. `proveContribution` in the build plan used division and **cannot compile as written.** Restate it by cross-multiplying:
 
 ```compact
-// declared == rate * pct / 100      ← impossible, no division operator
-assert(declared * 100 == rate * (contributionRate as Uint<64>), "under-declared");
+// declared == earnings * pct / 100      ← impossible, no division operator
+assert(declared * 100 == (hours as Uint<64>) * rate * (contributionRate as Uint<64>),
+       "the declaration does not match your real earnings");
 ```
+
+Note it is `hours * rate` — the period's real **earnings** — not the bare rate.
+Using the rate alone would demand the same contribution for a 12-hour week as a
+50-hour one. (This is the shipped line; the assert message matches the contract.)
 
 **Rule for the whole contract: never write `/` or `%`.** Move the division to the other side as a multiplication.
 
@@ -208,13 +213,18 @@ The person who most needs you is **B**, who wraps your `managed/` output into th
 
 ## Done when
 
-- [ ] `compact compile` succeeds with no errors
-- [ ] A **wrong salt** is rejected
-- [ ] A **wrong rate** is rejected
-- [ ] A **wrong amount** is rejected — this is the demo, test it first
-- [ ] Wrong hours are rejected
-- [ ] `managed/` is committed to git
+- [x] `compact compile` succeeds with no errors
+- [x] A **wrong salt** is rejected
+- [x] A **wrong rate** is rejected
+- [x] A **wrong amount** is rejected — this is the demo, test it first
+- [x] Hours cannot be faked — the worker never supplies them (`confirmPayment`
+      reads them from the ledger), and the employer cannot revise them
+      (`approveHours` is write-once)
+- [x] `managed/` is committed to git
 - [ ] You can explain out loud why the salary is a commitment and not a normal field
+
+Everything above except the last line is verified by
+`npm run smoke -w @nightshift/contract`. The last one is on you.
 
 ---
 

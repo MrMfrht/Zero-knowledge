@@ -380,11 +380,22 @@ Two bonuses:
 - **It is not your name.** `0x7f3a…` identifies you inside this contract and reveals nothing about who you are in real life.
 - **It is different in every app.** The `"nightshift:pk:"` text is a *domain separator*. A different app uses a different word, so the same person gets a completely different identity there, and nobody can link the two.
 
+One honest caveat on that second point: the separator is the same for every *NightShift* deployment. So Karim shows the **same** key to two different employers who both run NightShift, and those two employers could compare their public boards and work out they share a worker. Fixing it means mixing the contract's own address into the hash. It is open question #12 in [A_docs/06](06-open-design-questions.md).
+
 ---
 
 # Part 5 — Why each circuit exists
 
 Six circuits. Each solves one specific problem. Here is the problem first, then the circuit.
+
+> **About the code below.** These are **simplified teaching versions**, not the
+> shipped code. They write `myKey()` where the real contract writes
+> `dappKey(localSk())`, and they leave out the `disclose()` annotations and some
+> guards so the *idea* of each circuit is visible in five lines. The arguments
+> and the actual checks match what shipped. The real thing, which is what
+> compiles and runs, is
+> [`packages/contract/src/payroll.compact`](../packages/contract/src/payroll.compact)
+> — and [A_docs/07](07-circuit-map.md) quotes it verbatim.
 
 ## 1. `hire`
 
@@ -450,20 +461,25 @@ Salaried workers use `hours = 1`, so `1 × 5000 = 5000`. One circuit covers hour
 
 **The circuit.**
 ```compact
-export circuit confirmPayment(period: Uint<32>, hours: Uint<32>,
-                              rate: Uint<64>, salt: Bytes<32>,
-                              amountReceived: Uint<64>): [] {
+export circuit confirmPayment(period: Uint<32>, rate: Uint<64>,
+                              salt: Bytes<32>, amountReceived: Uint<64>): [] {
     const k = myKey();
     // 1. this really is the rate we sealed at hiring
     assert(persistentCommit(rate, salt) == agreedRate.lookup(k), "not the agreed rate");
-    // 2. these are the hours the employer approved
-    assert(hours == approvedHours.lookup(periodKey(k, period)), "hours do not match");
+    // 2. the hours the EMPLOYER approved — read from the board, not passed in
+    const hours = approvedHours.lookup(periodKey(k, period));
     // 3. the money is exactly right
     assert(amountReceived == hours * rate, "incorrect payment");
 
     paidFor.insert(periodKey(k, period), true);   // ← the ONLY public output
 }
 ```
+
+**Notice what is missing from the arguments: `hours`.** Karim never supplies it.
+It is read from the board, where the employer put it, so he cannot claim to have
+worked more hours than were approved — there is no place for him to type the
+number. And because `approveHours` is write-once, the employer cannot quietly
+rewrite it afterwards either. Both sides are pinned.
 
 Read the last line carefully. Three private numbers went in. **One boolean comes out.** The board gains:
 
@@ -487,15 +503,21 @@ March stays permanently blank on a public board that anyone can read, while the 
 
 **The circuit.**
 ```compact
-export circuit proveContribution(period: Uint<32>, declared: Uint<64>,
-                                 rate: Uint<64>, salt: Bytes<32>): [] {
-    assert(persistentCommit(rate, salt) == agreedRate.lookup(myKey()), "not the agreed rate");
-    assert(declared * 100 == rate * contributionRate, "under-declared");
-    contributionOk.insert(periodKey(myKey(), period), true);
+export circuit proveContribution(period: Uint<32>, rate: Uint<64>,
+                                 salt: Bytes<32>, declared: Uint<64>): [] {
+    const k = myKey();
+    assert(persistentCommit(rate, salt) == agreedRate.lookup(k), "not the agreed rate");
+    const hours = approvedHours.lookup(periodKey(k, period));
+    assert(declared * 100 == hours * rate * contributionRate, "under-declared");
+    contributionOk.insert(periodKey(k, period), true);
 }
 ```
 
-Why `declared * 100 == rate * pct` instead of `declared == rate * pct / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [SPIKE-ARITHMETIC.md](04-compact-arithmetic.md). Multiplying both sides by 100 says the same thing without dividing.
+Note it checks the period's real **earnings** — `hours × rate` — not the bare rate. For Karim, salaried at `hours = 1`, those are the same number; for Dana, paid hourly, they are not, and using the rate alone would demand the same contribution for a 12-hour week as a 50-hour one.
+
+Why `declared * 100 == …` instead of `declared == … / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [A_docs/04](04-compact-arithmetic.md). Multiplying both sides by 100 says the same thing without dividing.
+
+One more thing that is easy to miss: `declared` stays **private**. The contribution percentage is public, so publishing the declared amount would let anyone divide back out and recover the salary. It goes into the proof and never onto the board.
 
 The power here comes from *when* the commitment was made: at hiring, before anyone had a reason to lie.
 

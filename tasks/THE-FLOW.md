@@ -204,11 +204,21 @@ wallet, no permission.
 App E  →  reads the public chain (via the indexer — no circuits, no secrets)
 
               Jan   Feb   Mar   Apr
-   0x7f3a…     ✓     ✓     ✗     ✓        Salary: 🔒 sealed — not readable
+   0x7f3a…     ✓     ✓     ✓     ✓        Salary: 🔒 sealed — not readable
+   0xc4e8…     ✓     ✓     ✗     ✓        Salary: 🔒 sealed — not readable
 ```
 
-The ✗ is the story. And there is nowhere on the chain an amount *could* appear —
-the ledger's data shape has no field for one.
+Karim — `0x7f3a…`, the person we have followed for nine steps — is confirmed
+every month. The row underneath is someone else, and **the ✗ is the story**: that
+worker could not confirm March, because the money that arrived did not match the
+sealed agreement. Nobody adjudicated it and nobody could suppress it; the ✗ is
+simply the absence of a proof that was never possible to make.
+
+And there is nowhere on the chain an amount *could* appear — the ledger's data
+shape has no field for one.
+
+*(These two rows are the seeded demo data, `DEMO_KARIM` and `DEMO_SAM` in
+`MockPayrollApi`, so E's board looks like this before anything real is deployed.)*
 
 *(Matching `0x7f3a…` to the name "Karim" is only possible through D's backend
 directory — which is exactly why every directory route is behind authentication.)*
@@ -225,7 +235,7 @@ directory — which is exactly why every directory route is behind authenticatio
 | 3 | **D** | `hire` | `hire` | employer's | key → sealed envelope |
 | 4 | D → C | (QR handoff) | — | — | **nothing — but see the ⚠️** |
 | 5 | **C** | `acceptOffer` | `acceptHire` | Karim's | "0x7f3a… is active" |
-| 6 | **D** | `approveHours` | `approveHours` | employer's | the hours |
+| 6 | **D** | `approveHours` | `approveHours` | employer's | the hours (write-once — cannot be revised later) |
 | 7 | **D** | `payWorker` | — (wallet only) | — | nothing (shielded) |
 | 8 | **C** | `confirmPayment` | `confirmPayment` | Karim's | one ✓ (or a permanent blank) |
 | 9 | **E** | (reads only) | — | **none** | it only reads |

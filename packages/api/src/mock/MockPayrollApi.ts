@@ -276,13 +276,22 @@ export class MockPayrollApi implements PayrollApi {
   }): Promise<void> {
     return this.withLifecycle(params.onStatus, async () => {
       const worker = this.requireWorker(params.workerKey);
+      if (!worker.accepted) throw new PayrollError('This worker has not accepted an offer.');
+      if (!worker.active) throw new PayrollError("This worker's employment has ended.");
+      // Write-once, exactly as the contract enforces. Re-approving would let an
+      // employer rewrite the anchor confirmPayment checks against.
+      if (worker.approvedHours.has(params.period)) {
+        throw new PayrollError(`Hours for ${params.period} have already been approved.`);
+      }
       worker.approvedHours.set(params.period, params.hours);
     });
   }
 
   async endEmployment(workerKey: WorkerKey): Promise<void> {
     await this.tick();
-    this.requireWorker(workerKey).active = false;
+    const worker = this.requireWorker(workerKey);
+    if (!worker.active) throw new PayrollError("This worker's employment has already ended.");
+    worker.active = false;
   }
 
   async listWorkers(): Promise<WorkerSummary[]> {
@@ -317,6 +326,7 @@ export class MockPayrollApi implements PayrollApi {
   async acceptOffer(params: { ratePerPeriod: Amount; salt: Salt }): Promise<void> {
     await this.tick();
     const worker = this.requireWorker(this.me);
+    if (worker.accepted) throw new PayrollError('You have already accepted this offer.');
 
     // The check that makes accepting meaningful: does what the worker was told
     // actually open the value the employer put on-chain?
@@ -335,6 +345,8 @@ export class MockPayrollApi implements PayrollApi {
   async confirmPayment(params: { period: Period; amountReceived: Amount }): Promise<void> {
     await this.tick();
     const worker = this.requireWorker(this.me);
+    if (!worker.accepted) throw new PayrollError('You have not accepted an offer.');
+    if (!worker.active) throw new PayrollError('Your employment has ended.');
     const secret = sharedStore.privateState.get(this.me);
     if (!secret) throw new MissingPrivateStateError();
 
@@ -353,11 +365,21 @@ export class MockPayrollApi implements PayrollApi {
   async proveContribution(params: { period: Period; declared: Amount }): Promise<void> {
     await this.tick();
     const worker = this.requireWorker(this.me);
+    if (!worker.accepted) throw new PayrollError('You have not accepted an offer.');
     const secret = sharedStore.privateState.get(this.me);
     if (!secret) throw new MissingPrivateStateError();
 
-    const expected = (secret.ratePerPeriod * sharedStore.contributionRatePercent) / 100n;
-    if (params.declared !== expected) throw new ContributionMismatchError();
+    const hours = worker.approvedHours.get(params.period);
+    if (hours === undefined) throw new HoursNotApprovedError(params.period);
+    if (worker.contributionVerified.has(params.period)) {
+      throw new AlreadyConfirmedError(params.period);
+    }
+
+    // The contract checks earnings for the period, not the bare rate, and
+    // cross-multiplies because Compact has no division operator:
+    //   declared × 100 == hours × rate × contributionRate
+    const earningsShare = BigInt(hours) * secret.ratePerPeriod * sharedStore.contributionRatePercent;
+    if (params.declared * 100n !== earningsShare) throw new ContributionMismatchError();
 
     worker.contributionVerified.add(params.period);
   }

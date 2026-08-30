@@ -26,16 +26,26 @@ npm run smoke -w @nightshift/contract
 
 ```
 hire ✅ · stranger rejected ❌ · wrong-rate accept rejected ❌ · acceptHire ✅
-approveHours ✅ · UNDERPAYMENT of 4000 rejected ❌ ← THE DEMO · confirm ✅
+approveHours ✅ · re-approving the same period rejected ❌
+UNDERPAYMENT of 4000 rejected ❌ ← THE DEMO · confirm ✅
 double-confirm rejected ❌ · under-declared contribution rejected ❌
-proveContribution ✅ · endEmployment ✅ · post-end approvals rejected ❌
+proveContribution ✅ · second period approved + confirmed ✅
+endEmployment ✅ · post-end approvals rejected ❌ · double-end rejected ❌
 
-final public ledger: paidFor 1 ✓, contributionOk 1 ✓, active(karim) false
+final public ledger: paidFor 2 ✓, contributionOk 1 ✓, active(karim) false
 anywhere to read a salary or amount: NO — the ledger type has no such field
 ```
 
 Every ❌ is a rejection we want, each failing with our exact assert message.
 The underpayment line is the demo, running locally for real.
+
+Two of those lines exist because of the privacy audit on 2026-08-30.
+*Re-approving the same period* must fail, or an employer could rewrite the hours
+`confirmPayment` anchors to and get an underpayment recorded as correct
+([question 13](../../A_docs/06-open-design-questions.md)). And running a
+**second period** end to end is what proves `periodKey` actually distinguishes
+periods — with only period 1 tested, a broken `Uint<32> → Bytes<32>` cast would
+have gone unnoticed.
 
 B: construct with `new Contract(witnesses)` and build private state with
 `createPayrollPrivateState(secretKey)` — see the comments in the file.
@@ -56,7 +66,7 @@ can use the contract without installing the Compact toolchain.
 |---|---|---|
 | `hire` | ✅ compiles | Employer seals a worker's agreed rate — **[documented](../../A_docs/02-files-and-the-typescript-bridge.md)** |
 | `acceptHire` | ✅ compiles | Worker verifies the seal matches what they were told |
-| `approveHours` | ✅ compiles | Employer approves a timesheet |
+| `approveHours` | ✅ compiles | Employer approves a timesheet — **write-once**, so the anchor cannot be rewritten later |
 | `confirmPayment` | ✅ compiles | **The one the product exists for.** Worker proves the payment matched the sealed rate |
 | `proveContribution` | ✅ compiles | Proves the social-security declaration used the REAL earnings — cross-multiplied, since Compact has no division |
 | `endEmployment` | ✅ compiles | Marks a worker inactive; history stays forever |
@@ -79,6 +89,7 @@ social-security percentage, sealed for the contract's life.
 All the deep explanation now lives in **[A_docs/](../../A_docs/README.md)** — this README is just how to build.
 
 
-- **[CIRCUIT-1-HIRE.md](../../A_docs/02-files-and-the-typescript-bridge.md) — what every file in this folder is, how Compact and TypeScript connect, and the whole hiring flow step by step. Start here if the folder looks confusing.**
-- [tasks/01-contract-EXPLAINED.md](../../A_docs/01-understanding-the-contract.md) — why any of this works
-- [SPIKE-ARITHMETIC.md](../../A_docs/04-compact-arithmetic.md) — Compact has no division operator
+- **[A_docs/02 — files and the TypeScript bridge](../../A_docs/02-files-and-the-typescript-bridge.md): what every file in this folder is, how Compact and TypeScript connect, and the whole hiring flow step by step. Start here if the folder looks confusing.**
+- [A_docs/01 — understanding the contract](../../A_docs/01-understanding-the-contract.md) — why any of this works
+- [A_docs/04 — Compact arithmetic](../../A_docs/04-compact-arithmetic.md) — Compact has no division operator
+- [A_docs/06 — open design questions](../../A_docs/06-open-design-questions.md) — the live risk register; read before the demo

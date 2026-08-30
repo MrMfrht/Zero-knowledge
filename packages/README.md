@@ -6,9 +6,9 @@ Read this before anything else in here. It takes three minutes.
 
 ## The short version
 
-The lead has written **six files**. They give you a **working fake payroll system** with no blockchain behind it, which already enforces all the real rules.
+There is a **working fake payroll system** here with no blockchain behind it, which already enforces all the real rules — and, next to it, the **real contract**, which compiles and runs.
 
-You build your app against that fake, today. When B finishes the real blockchain version, **one line in your app changes** and nothing else.
+You build your app against the fake, today. When B finishes the real blockchain version, **one line in your app changes** and nothing else.
 
 ---
 
@@ -19,20 +19,29 @@ packages/
 ├── shared/                         FOLDER 1 — the words we all agree on
 │   └── src/index.ts                  "a WorkerKey is a string, a Period is 2026-03…"
 │
-└── api/                            FOLDER 2 — the thing your app calls
-    ├── src/PayrollApi.ts             the list of 11 functions your app can call
-    ├── src/errors.ts                 the error types your app catches
-    ├── src/mock/MockPayrollApi.ts    a fake that really works, no blockchain
-    ├── src/index.ts                  "here is what this folder gives you"
-    └── README.md                     👈 THE GUIDE — a section for each of you
+├── api/                            FOLDER 2 — the thing your app calls
+│   ├── src/PayrollApi.ts             the list of 15 functions your app can call
+│   ├── src/errors.ts                 the error types your app catches
+│   ├── src/mock/MockPayrollApi.ts    a fake that really works, no blockchain
+│   ├── src/midnight/                 B's real wallet + payment code
+│   ├── src/index.ts                  "here is what this folder gives you"
+│   └── README.md                     👈 THE GUIDE — a section for each of you
+│
+└── contract/                       FOLDER 3 — the real smart contract (A)
+    ├── src/payroll.compact           the rules: six circuits, all compiling
+    ├── src/witnesses.ts              hands a caller's secret to a circuit
+    ├── src/managed/                  compiler output — never edit, committed on purpose
+    ├── smoke.mjs                     the whole lifecycle, run locally: `npm run smoke`
+    └── README.md                     how to build it
 ```
 
-That is everything. Six files.
+**You do not need `contract/` to build your app.** It is there so B can wire the
+real api against it, and so anyone curious can read what the chain actually
+enforces. C, D and E work entirely through `api/`.
 
 Folders that do not exist yet — each person creates their own:
 
 ```
-packages/contract/       A
 packages/worker-app/     C
 packages/employer-app/   D
 packages/auditor/        E

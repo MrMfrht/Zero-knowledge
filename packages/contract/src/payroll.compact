@@ -10,7 +10,8 @@ import CompactStandardLibrary;
 // a commitment — a hash of the salary and a secret random salt — which hides
 // the number while making it impossible to change later.
 //
-// See tasks/01-contract-EXPLAINED.md for why any of this is shaped the way it is.
+// See A_docs/01-understanding-the-contract.md for why any of this is shaped
+// the way it is.
 // ---------------------------------------------------------------------------
 
 // --- public state ----------------------------------------------------------
@@ -71,9 +72,11 @@ witness localSk(): Bytes<32>;
 
 /// A caller's public identity: the hash of their secret.
 ///
-/// `pure` because it touches no ledger state. The domain separator means the
-/// same person gets a different identity in a different app, so their activity
-/// here cannot be linked to their activity elsewhere.
+/// `pure` because it touches no ledger state. The domain separator separates
+/// NightShift identities from other apps that hash the same secret with a
+/// different prefix. It does NOT vary per deployment: the same person shows
+/// the same key in every NightShift contract, so two employers who compare
+/// ledgers can tell they share a worker. Open question — see A_docs/06.
 export pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
     return disclose(persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]));
 }
@@ -174,7 +177,15 @@ export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>
     assert(active.member(w), "this worker has not accepted an offer");
     assert(active.lookup(w), "this worker's employment has ended");
 
-    approvedHours.insert(disclose(periodKey(w, period)), disclose(hours));
+    const pk = disclose(periodKey(w, period));
+
+    // Write-once, like every other map in this contract. Without this guard
+    // the employer could underpay, then quietly re-approve the period with
+    // fewer hours before the worker confirms — and confirmPayment would bless
+    // the wrong amount, because it trusts approvedHours as its anchor.
+    assert(!approvedHours.member(pk), "hours already approved for this period");
+
+    approvedHours.insert(pk, disclose(hours));
 }
 
 /// The worker proves the money that arrived was exactly what was agreed.
