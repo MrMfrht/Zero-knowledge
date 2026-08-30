@@ -1,0 +1,73 @@
+# NightShift local devnet — a whole Midnight network on your own machine.
+#
+#   docker compose -f docker/compose.yml up -d
+#   docker compose -f docker/compose.yml ps        # wait for all three healthy
+#   docker compose -f docker/compose.yml down -v   # stop and wipe the chain
+#
+# Three services, and you need all three:
+#
+#   node          the blockchain itself. Produces blocks, accepts transactions.
+#   indexer       makes the chain queryable. Everything that READS public state
+#                 goes through here — E's auditor board, getEmploymentRecord.
+#   proof-server  generates the zero-knowledge proofs. Runs LOCALLY, on purpose:
+#                 it sees your secrets, so it must never be a shared service.
+#
+# Every port is bound to 127.0.0.1, so nothing here is reachable from outside
+# this machine. That matters more than usual for the proof server.
+#
+# This is a throwaway chain. `down -v` wipes it; redeploy the contract after.
+
+services:
+  # The proof server is the one piece that handles secrets. Keep it local.
+  proof-server:
+    image: 'midnightntwrk/proof-server:8.1.0'
+    command: ['midnight-proof-server', '-v']
+    ports:
+      - '127.0.0.1:6300:6300'
+    environment:
+      RUST_BACKTRACE: 'full'
+    healthcheck:
+      test: ['CMD-SHELL', 'echo > /dev/tcp/127.0.0.1/6300']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  node:
+    image: 'midnightntwrk/midnight-node:0.22.3'
+    ports:
+      - '127.0.0.1:9944:9944'
+    environment:
+      CFG_PRESET: 'dev'
+      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  indexer:
+    image: 'midnightntwrk/indexer-standalone:4.0.0'
+    ports:
+      - '127.0.0.1:8088:8088'
+    environment:
+      RUST_LOG: 'indexer=info,chain_indexer=info,indexer_api=info,wallet_indexer=info,indexer_common=info,fastrace_opentelemetry=off,info'
+      APP__INFRA__NODE__URL: 'ws://node:9944'
+      APP__APPLICATION__NETWORK_ID: 'undeployed'
+      # Local-only throwaway credentials. They are here in plain sight because
+      # this stack is bound to localhost and holds nothing real. Do not copy
+      # this pattern to anything that is not a disposable dev chain.
+      APP__INFRA__STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
+      APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+    healthcheck:
+      test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      node:
+        condition: service_healthy
