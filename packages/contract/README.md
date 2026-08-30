@@ -55,22 +55,17 @@ B: construct with `new Contract(witnesses)` and build private state with
 That folder is compiler output. **Never edit it.** It is committed so C, D and E
 can use the contract without installing the Compact toolchain.
 
-> ⚠️ **The committed build is currently `--skip-zk`.** It contains the TypeScript
-> bindings and the ledger shape, which is enough for B to wire the API against.
-> It does **not** contain proving keys, so it cannot generate a real transaction
-> yet. A full build lands before integration.
+> ✅ **The committed build is a full build, keys included.** `managed/keys/` holds
+> a `.prover` and a `.verifier` for each of the six circuits, so real proofs can
+> be generated — B is no longer blocked on this. Regenerated 2026-08-30 from the
+> current source, after PR #5 merged (its keys predated the `approveHours` and
+> `dappKey` fixes and were stale for all six circuits).
 
-> 🔴 **The keys on `contract-full-zk-build` are stale — all six of them.**
-> That branch adds real proving and verifier keys, but they were generated before
-> two fixes on 2026-08-30: the `approveHours` write-once guard, and the
-> per-deployment change to `dappKey`. A proving key is tied to the exact circuit
-> it was built from, and since **every** circuit calls `dappKey`, every key on
-> that branch is now out of date — a proof made with one will not verify.
->
-> Merging the branch is harmless in itself (it only adds files, it changes no
-> source), so accept the PR if you want the work in the history. Just re-run
-> `npm run compact:full` on top of `dev` afterwards and commit the regenerated
-> keys. Do not deploy anything using the keys as they stand.
+> ⚠️ **Every source change invalidates these keys.** A proving key is tied to the
+> exact circuit it was built from. If you touch `payroll.compact` — even one
+> assertion — re-run `npm run compact:full` and commit the result, or proofs made
+> against the old keys will fail to verify. Note that anything touching `dappKey`
+> restales **all six**, since every circuit calls it.
 
 ## Circuits
 
