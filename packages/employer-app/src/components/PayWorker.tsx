@@ -1,42 +1,71 @@
 import React, { useState } from 'react';
-import { CreditCard, Send, ShieldCheck, AlertCircle, Sparkles, Wallet, AlertTriangle, ArrowRight } from 'lucide-react';
+import { CreditCard, Send, ShieldCheck, AlertCircle, Sparkles, Wallet } from 'lucide-react';
 import { DEMO_KARIM, DEMO_DANA, DEMO_SAM } from '@nightshift/api';
+import type { PayrollApi, TransactionStatus } from '@nightshift/api';
 
 interface PayWorkerProps {
+  api: PayrollApi;
+  walletConnected: boolean;
+  onConnectWallet: () => void;
   initialWorkerKey?: string | undefined;
   onPaymentSent: (workerKey: string, amount: string, period: string) => void;
 }
 
-export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymentSent }) => {
+export const PayWorker: React.FC<PayWorkerProps> = ({
+  api,
+  walletConnected,
+  onConnectWallet,
+  initialWorkerKey,
+  onPaymentSent,
+}) => {
   const [workerKey, setWorkerKey] = useState(initialWorkerKey || DEMO_KARIM);
   const [period, setPeriod] = useState('2026-04');
   const [amountInput, setAmountInput] = useState('5000');
-  const [isSending, setIsSending] = useState(false);
+  const [stage, setStage] = useState<TransactionStatus['stage'] | 'idle'>('idle');
+  const [error, setError] = useState<string | null>(null);
   const [lastPayment, setLastPayment] = useState<{
     workerKey: string;
     amount: string;
     period: string;
-    txHash: string;
+    txId: string | undefined;
     timestamp: string;
   } | null>(null);
 
-  const handleSendPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSending(true);
+  const isSending = stage !== 'idle' && stage !== 'confirmed' && stage !== 'failed';
 
-    setTimeout(() => {
-      const mockTxHash = '0x' + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  const handleSendPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    // payWorker() genuinely throws with no wallet connected against the
+    // real MidnightPayrollApi — prompt for it here rather than letting the
+    // call fail. Against the mock this just flips walletConnected to true.
+    if (!walletConnected) {
+      onConnectWallet();
+      setError('Connect a wallet first, then send the payment.');
+      return;
+    }
+
+    setStage('signing');
+    try {
+      const { txId } = await api.payWorker({
+        workerKey: workerKey.trim(),
+        amount: BigInt(amountInput.trim() || '0'),
+        onStatus: (status) => setStage(status.stage),
+      });
+
       setLastPayment({
         workerKey: workerKey.trim(),
         amount: amountInput.trim(),
         period: period.trim(),
-        txHash: mockTxHash,
+        txId,
         timestamp: new Date().toLocaleTimeString(),
       });
-
-      setIsSending(false);
       onPaymentSent(workerKey.trim(), amountInput.trim(), period.trim());
-    }, 1200);
+    } catch (err) {
+      setStage('failed');
+      setError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const selectPresetWorker = (key: string, defaultAmount: string) => {
@@ -46,7 +75,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <div>
@@ -55,10 +84,22 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
             Send Private Shielded Payment
           </h2>
           <p className="text-sm text-slate-400 mt-1">
-            Execute a direct wallet-to-wallet transfer in Midnight's private currency.
+            A direct wallet-to-wallet transfer of shielded NIGHT — it does not touch the
+            contract at all. <code className="text-slate-500">confirmPayment</code> (in the
+            worker app) is the separate step that checks it against the sealed rate.
           </p>
         </div>
       </div>
+
+      {!walletConnected && (
+        <div className="rounded-xl bg-indigo-950/40 border border-indigo-500/30 p-4 text-xs text-indigo-200 flex items-center gap-3">
+          <Wallet className="h-4 w-4 text-indigo-400 shrink-0" />
+          <span>
+            No wallet connected. This calls <code>payWorker()</code> for real —
+            connect one before sending.
+          </span>
+        </div>
+      )}
 
       {/* Demo Guidance Alert */}
       <div className="rounded-xl bg-purple-950/40 border border-purple-500/30 p-4 text-xs text-purple-200 space-y-2">
@@ -67,7 +108,10 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
           <span>Demo Feature: Editable Payment Amount</span>
         </div>
         <p className="text-purple-200/80 leading-relaxed">
-          The payment amount input is intentionally editable so you can perform the live underpayment demonstration! Try sending <strong>4,000 DUST</strong> when <strong>5,000 DUST</strong> was sealed. When the worker tries to confirm it, their app will refuse!
+          The payment amount input is intentionally editable so you can perform the live
+          underpayment demonstration! Try sending <strong>4,000</strong> when{' '}
+          <strong>5,000</strong> was sealed. When the worker tries to confirm it, their app
+          will refuse — the mismatch is the product working, not a bug.
         </p>
       </div>
 
@@ -87,7 +131,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
             }`}
           >
             <div className="font-semibold text-xs text-slate-200">Karim (Salaried)</div>
-            <div className="text-xs text-slate-400">Target: 5000 DUST</div>
+            <div className="text-xs text-slate-400">Target: 5000 NIGHT</div>
           </button>
 
           <button
@@ -120,7 +164,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
 
       {/* Main Payment Form */}
       <form onSubmit={handleSendPayment} className="glass-panel p-6 space-y-6">
-        
+
         {/* Worker Key */}
         <div>
           <label className="block text-sm font-semibold text-slate-200 mb-2">
@@ -155,7 +199,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
           {/* Amount (Editable) */}
           <div>
             <label className="block text-sm font-semibold text-slate-200 mb-2">
-              Transfer Amount (DUST)
+              Transfer Amount (NIGHT)
             </label>
             <div className="relative">
               <input
@@ -167,7 +211,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
                 placeholder="5000"
                 className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-sm text-slate-100 font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
               />
-              <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-mono">DUST</span>
+              <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-mono">NIGHT</span>
             </div>
           </div>
         </div>
@@ -191,6 +235,13 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
           </button>
         </div>
 
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl bg-rose-950/40 border border-rose-500/30 p-3 text-xs text-rose-200">
+            <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Submit */}
         <button
           type="submit"
@@ -200,12 +251,12 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
           {isSending ? (
             <span className="flex items-center gap-2">
               <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              Generating Shielded ZK Payment Proof...
+              {stageLabel(stage)}
             </span>
           ) : (
             <>
               <Send className="h-4 w-4" />
-              <span>Send Private Payment ({amountInput} DUST)</span>
+              <span>Send Private Payment ({amountInput} NIGHT)</span>
             </>
           )}
         </button>
@@ -229,23 +280,41 @@ export const PayWorker: React.FC<PayWorkerProps> = ({ initialWorkerKey, onPaymen
             </div>
             <div className="flex justify-between py-1 border-b border-slate-900">
               <span className="text-slate-400">Amount Transferred:</span>
-              <span className="text-white font-bold">{lastPayment.amount} DUST</span>
+              <span className="text-white font-bold">{lastPayment.amount} NIGHT</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-900">
               <span className="text-slate-400">Pay Period:</span>
               <span className="text-slate-200">{lastPayment.period}</span>
             </div>
             <div className="flex justify-between py-1">
-              <span className="text-slate-400">Shielded Tx Hash:</span>
-              <span className="text-slate-400">{lastPayment.txHash.slice(0, 16)}...</span>
+              <span className="text-slate-400">Tx id:</span>
+              <span className="text-slate-400">
+                {lastPayment.txId ? `${lastPayment.txId.slice(0, 16)}...` : 'not reported (see PayrollApi docs)'}
+              </span>
             </div>
           </div>
 
           <p className="text-xs text-slate-400 pt-2 italic">
-            Note: The payment was sent directly from wallet to wallet. The contract only learns whether the payment is confirmed when the worker runs their ZK verification app.
+            The payment was sent directly wallet to wallet. The contract only learns whether
+            it was correct when the worker runs <code>confirmPayment</code> in their own app.
           </p>
         </div>
       )}
     </div>
   );
 };
+
+function stageLabel(stage: TransactionStatus['stage'] | 'idle'): string {
+  switch (stage) {
+    case 'signing':
+      return 'Waiting for wallet signature...';
+    case 'proving':
+      return 'Generating shielded ZK proof...';
+    case 'submitting':
+      return 'Submitting transaction...';
+    case 'pending':
+      return 'Waiting for confirmation...';
+    default:
+      return 'Sending...';
+  }
+}
