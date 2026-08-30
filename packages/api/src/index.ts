@@ -33,6 +33,7 @@ export {
   DEMO_KARIM,
   DEMO_DANA,
   DEMO_SAM,
+  DEMO_SHIELDED_ADDRESSES,
 } from './mock/MockPayrollApi.js';
 export type { MockPayrollApiOptions } from './mock/MockPayrollApi.js';
 

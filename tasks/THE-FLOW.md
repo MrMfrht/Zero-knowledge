@@ -151,15 +151,31 @@ editing a draft six times should not cost six transactions.)*
 ## Step 7 — Payday (app D → Karim's wallet, no contract involved)
 
 ```
-App D  →  api.payWorker({ workerKey, amount: 5000n })
-             └─ a PRIVATE wallet-to-wallet transfer (B's SPIKE-PAY, proven)
-                sender hidden, receiver hidden, amount hidden
+App D  →  api.payWorker({ workerKey, recipientShieldedAddress, amount: 5000n })
+             └─ a PRIVATE wallet-to-wallet transfer of shielded NIGHT
+                (B's SPIKE-PAY, proven on a real devnet)
                 — the contract never touches the money
 ```
+
+**Two identifiers, and they are not the same thing.** `workerKey` says *who Karim
+is inside the contract*. `recipientShieldedAddress` says *where his money goes* —
+it comes from his own wallet, and nothing on-chain connects the two. That is
+deliberate: if the ledger paired an employment record with a payment address,
+anyone could match the two. So Karim gives the employer his shielded address at
+hiring, alongside his key, and the employer keeps it with their own records.
+
+**The money is NIGHT, never DUST.** NIGHT is the transferable token; DUST is a
+non-transferable resource that exists only to pay fees, and cannot be sent
+between users at all. Any UI showing a salary in "DUST" is simply wrong.
 
 The chain does not record this as "salary paid". It is just shielded money
 moving. Whether it was *correct* is the next step — and that is Karim's to do,
 not the employer's.
+
+*Why not pay through the contract?* Not a style choice. Compact's `sendShielded`
+does not currently create coin ciphertexts, so a contract paying anyone other
+than its own caller leaves the recipient with no notification that the money
+exists. Wallet-to-wallet is the documented way to do this today.
 
 ---
 

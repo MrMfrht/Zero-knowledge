@@ -125,6 +125,20 @@ the secret never crosses a network, so no server of ours can ever read a salary.
 
 > Six: seal the salary at hiring, let the worker verify the seal matches what they were told, approve a timesheet, confirm a payment, prove the social-security declaration used the real salary, and end employment.
 
+## "What token is actually being paid, and why doesn't the money go through the contract?"
+
+**A good question to get — the answer shows you know the platform.**
+
+> Shielded NIGHT. NIGHT is Midnight's transferable token; DUST is a non-transferable resource that only pays fees — you cannot send DUST to a person at all.
+>
+> The money moves wallet to wallet and never touches the contract, and that is not a shortcut. Compact's `sendShielded` does not currently create coin ciphertexts, so if a contract sent shielded value to anyone other than its own caller, the recipient would never be notified the coin existed. Paying directly is the documented way to do this today. It also happens to be the better design: the contract's job is to judge whether a payment was correct, and it can do that without ever holding anyone's money.
+
+## "How does the employer know where to send the money, if everything is pseudonymous?"
+
+> The worker gives them a shielded address, once, at hiring — from their own wallet, alongside their worker key. Those are two different things: the key identifies them inside the contract, the address is where funds land, and nothing on-chain connects the two.
+>
+> That separation is deliberate. If the ledger paired an employment record with a payment address, anyone could match them and the pseudonyms would stop meaning anything.
+
 ---
 
 # Part 3 — Attack questions

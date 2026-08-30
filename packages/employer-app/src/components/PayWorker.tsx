@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, Send, ShieldCheck, AlertCircle, Sparkles, Wallet } from 'lucide-react';
-import { DEMO_KARIM, DEMO_DANA, DEMO_SAM } from '@nightshift/api';
+import { DEMO_KARIM, DEMO_DANA, DEMO_SAM, DEMO_SHIELDED_ADDRESSES } from '@nightshift/api';
 import type { PayrollApi, TransactionStatus } from '@nightshift/api';
 
 interface PayWorkerProps {
@@ -19,6 +19,12 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
   onPaymentSent,
 }) => {
   const [workerKey, setWorkerKey] = useState(initialWorkerKey || DEMO_KARIM);
+  // Where the money goes. Deliberately NOT derived from the worker key — the
+  // two are unrelated, and nothing on-chain maps between them. The worker hands
+  // this over at hiring, and the employer keeps it with their other records.
+  const [shieldedAddress, setShieldedAddress] = useState(
+    DEMO_SHIELDED_ADDRESSES[initialWorkerKey || DEMO_KARIM] ?? '',
+  );
   const [period, setPeriod] = useState('2026-04');
   const [amountInput, setAmountInput] = useState('5000');
   const [stage, setStage] = useState<TransactionStatus['stage'] | 'idle'>('idle');
@@ -50,6 +56,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
     try {
       const { txId } = await api.payWorker({
         workerKey: workerKey.trim(),
+        recipientShieldedAddress: shieldedAddress.trim(),
         amount: BigInt(amountInput.trim() || '0'),
         onStatus: (status) => setStage(status.stage),
       });
@@ -70,6 +77,7 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
 
   const selectPresetWorker = (key: string, defaultAmount: string) => {
     setWorkerKey(key);
+    setShieldedAddress(DEMO_SHIELDED_ADDRESSES[key] ?? '');
     setAmountInput(defaultAmount);
   };
 
@@ -178,6 +186,27 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
             placeholder="0x7f3a..."
             className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-sm text-slate-100 font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
           />
+        </div>
+
+        {/* Shielded address — where the money actually goes */}
+        <div>
+          <label className="block text-sm font-semibold text-slate-200 mb-2">
+            Recipient's Shielded Address
+          </label>
+          <input
+            type="text"
+            value={shieldedAddress}
+            onChange={(e) => setShieldedAddress(e.target.value)}
+            required
+            placeholder="mn_shield-addr_..."
+            className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-sm text-slate-100 font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
+          />
+          <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+            Not the same thing as the worker key above, and not derived from it.
+            The key says <em>who they are inside the contract</em>; this says{' '}
+            <em>where money goes</em>. Nothing on-chain connects the two — that is
+            deliberate, and it is why the worker has to give you this separately.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -163,12 +163,37 @@ You and **E** should share styling. Your privacy panel and their auditor board a
 
 ---
 
+## New, 2026-08-30: show the worker their shielded address
+
+There is a second identifier the worker needs to hand over, and right now no
+screen shows it.
+
+```ts
+const address = await api.getMyShieldedAddress();  // "mn_shield-addr_..."
+```
+
+**It is not the same as their worker key, and one cannot be derived from the
+other.** The key says *who they are inside the contract*; this says *where money
+goes*. Nothing on-chain connects them — deliberately, because pairing an
+employment record with a payment address on a public ledger would undo the
+pseudonymity entirely.
+
+Practically: the employer cannot pay anyone until they have this. So wherever
+you already show the worker key for copying, show the shielded address the same
+way — copy button, QR, whatever you built — and label the difference plainly, so
+nobody sends money to a worker key and wonders where it went.
+
+Needs a connected wallet, since it comes from the wallet itself.
+
+---
+
 ## Done when
 
 - [ ] Someone who has never seen the project can accept an offer and confirm a payment without being told how
 - [ ] Entering a **wrong amount** fails, with a message that looks intentional
 - [ ] The salt survives a page refresh
 - [ ] The privacy panel is accurate — no lies in either column
+- [ ] The worker can copy **both** their worker key and their shielded address, and the difference is obvious
 - [ ] It works against the fake API, so switching to the real one is a one-line change
 
 ---

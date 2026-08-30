@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { TransactionStatus } from '../PayrollApi.js';
 import { ContributionMismatchError, PaymentMismatchError } from '../errors.js';
 import {
-  DEMO_DANA,
   DEMO_EMPLOYER,
   DEMO_KARIM,
+  DEMO_SHIELDED_ADDRESSES,
   MockPayrollApi,
   resetMockStore,
 } from './MockPayrollApi.js';
@@ -35,18 +35,50 @@ describe('MockPayrollApi — wallet', () => {
     await expect(client.getWalletStatus()).resolves.toEqual({ connected: false });
   });
 
+  const karimAddress = DEMO_SHIELDED_ADDRESSES[DEMO_KARIM]!;
+
   it('payWorker requires a connected wallet', async () => {
     const client = api();
     await expect(
-      client.payWorker({ workerKey: DEMO_KARIM, amount: 5000n }),
+      client.payWorker({
+        workerKey: DEMO_KARIM,
+        recipientShieldedAddress: karimAddress,
+        amount: 5000n,
+      }),
     ).rejects.toThrow('No wallet connected');
   });
 
   it('payWorker succeeds once a wallet is connected', async () => {
     const client = api();
     await client.connectWallet();
-    const result = await client.payWorker({ workerKey: DEMO_KARIM, amount: 5000n });
+    const result = await client.payWorker({
+      workerKey: DEMO_KARIM,
+      recipientShieldedAddress: karimAddress,
+      amount: 5000n,
+    });
     expect(result.txId).toMatch(/^0x[0-9a-f]{40}$/);
+  });
+
+  // A worker key is an identity inside the contract, not a place funds can go.
+  // Sending to one would silently fail against a real wallet, so the mock
+  // refuses an empty recipient rather than pretending the payment happened.
+  it('payWorker refuses an empty shielded address', async () => {
+    const client = api();
+    await client.connectWallet();
+    await expect(
+      client.payWorker({
+        workerKey: DEMO_KARIM,
+        recipientShieldedAddress: '   ',
+        amount: 5000n,
+      }),
+    ).rejects.toThrow(/shielded address is required/i);
+  });
+
+  it('getMyShieldedAddress needs a wallet, then returns the address', async () => {
+    const karim = asWorker(DEMO_KARIM);
+    await expect(karim.getMyShieldedAddress()).rejects.toThrow(/Connect a wallet/i);
+    await karim.connectWallet();
+    await expect(karim.getMyShieldedAddress()).resolves.toBe(karimAddress);
   });
 });
 

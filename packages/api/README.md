@@ -151,15 +151,33 @@ need a connected wallet and throw without one.
 
 ```ts
 await api.payWorker({
-  workerKey: DEMO_KARIM,
+  workerKey: DEMO_KARIM,                    // who, for your own records
+  recipientShieldedAddress: theirAddress,   // where the money actually goes
   amount: 5000n,
   onStatus: (s) => setStage(s.stage),
 });
 ```
 
-This is a **plain wallet-to-wallet shielded transfer. It does not touch the
-contract.** `confirmPayment` is the separate, later step where the worker checks
-the amount against the sealed rate — that is the only place any checking happens.
+This is a **plain wallet-to-wallet shielded transfer of NIGHT. It does not touch
+the contract.** `confirmPayment` is the separate, later step where the worker
+checks the amount against the sealed rate — that is the only place any checking
+happens.
+
+> ### The two identifiers are not interchangeable
+>
+> `workerKey` identifies someone **inside the contract**. `recipientShieldedAddress`
+> is **where funds land**, and it comes from that person's own wallet via
+> `getMyShieldedAddress()`. Nothing on-chain connects them, and nothing should:
+> pairing an employment record with a payment address on a public ledger would
+> undo the pseudonymity.
+>
+> So you cannot derive one from the other. The worker hands their employer both,
+> once, at hiring. Passing a `workerKey` as the recipient fails against a real
+> wallet — and the mock now rejects an empty address for the same reason, so you
+> find out in development rather than on stage.
+>
+> **Pay in NIGHT, never DUST.** DUST is a non-transferable fee resource; it
+> cannot be sent between people at all. A salary shown in DUST is a factual error.
 
 > ### ⚠️ `txId` is optional and will often be absent
 >
@@ -504,7 +522,8 @@ proof server image                  8.1.0
 | `connectWallet()` | C, D | `WalletStatus` |
 | `disconnectWallet()` | C, D | `void` |
 | `getWalletStatus()` | C, D | `WalletStatus` |
-| `payWorker({ workerKey, amount, onStatus? })` | employer | `{ txId?: string }` — **txId often absent** |
+| `getMyShieldedAddress()` | everyone | `string` — Bech32m, needs a wallet |
+| `payWorker({ workerKey, recipientShieldedAddress, amount, onStatus? })` | employer | `{ txId?: string }` — **txId often absent** |
 | `hire({ workerKey, ratePerPeriod, expectedHours })` | employer | `Offer` |
 | `approveHours({ workerKey, period, hours })` | employer | `void` |
 | `endEmployment(workerKey)` | employer | `void` |

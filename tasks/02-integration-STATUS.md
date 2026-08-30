@@ -27,6 +27,36 @@ documents it so D never builds UI that waits for a txId.
 
 ---
 
+## ✅ Your PR #3 is merged, and the payWorker gap is closed
+
+`MidnightPayrollApi` is on `dev`, and the two `dappKey` call sites were migrated
+for you (see the breaking-change note below). Two further things changed in code
+you wrote — both were gaps you had flagged honestly in your own comments:
+
+**`payWorker` now takes the recipient's shielded address.** Your comment was
+right that a `WorkerKey` is not somewhere money can be sent and that nothing
+on-chain maps between them. The interface now carries it explicitly:
+
+```ts
+payWorker({ workerKey, recipientShieldedAddress, amount, onStatus? })
+```
+
+with a matching `getMyShieldedAddress()` that returns
+`getShieldedAddresses().shieldedAddress`. That field does exist on the connector
+— the type is `{ shieldedAddress, shieldedCoinPublicKey, shieldedEncryptionPublicKey }`,
+all Bech32m — so your `payment.ts` comment was accurate.
+
+**`payWorker` now stops at `'pending'` rather than reporting `'confirmed'`.**
+Your `waitForPaymentConfirmed` note explains why there is no txId to correlate
+against; claiming `'confirmed'` was the one place the code asserted something it
+could not observe.
+
+Your `payment.ts` was checked line by line against the connector's published
+types and the official docs, and matches exactly — including the `void` return
+from `submitTransaction`. Nothing in it needed changing.
+
+---
+
 ## 🔴 Breaking change, 2026-08-30 — two lines in your branch
 
 A privacy review found that `dappKey` had no per-deployment component, so one

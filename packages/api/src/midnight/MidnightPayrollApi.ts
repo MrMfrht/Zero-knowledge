@@ -151,29 +151,44 @@ export class MidnightPayrollApi implements PayrollApi {
 
   async payWorker(params: {
     workerKey: WorkerKey;
+    recipientShieldedAddress: string;
     amount: Amount;
     onStatus?: OnTransactionStatus;
   }): Promise<{ txId?: string }> {
     const connectedApi = this.requireConnectedApi();
+
+    // The recipient is the worker's SHIELDED address, never their WorkerKey.
+    // The two are unrelated by design and nothing on-chain maps between them,
+    // so the caller must supply it — see PayrollApi.payWorker.
+    const recipient = params.recipientShieldedAddress?.trim();
+    if (!recipient) {
+      throw new PayrollError(
+        'payWorker needs the worker\'s shielded address. A worker key identifies them ' +
+          'inside the contract; it is not somewhere funds can be sent.',
+      );
+    }
+
     params.onStatus?.({ stage: 'signing' });
-    // sendPrivatePayment is wallet-to-wallet — it needs the worker's
-    // SHIELDED address, not their contract WorkerKey. Neither PayrollApi
-    // nor the contract ledger stores that mapping (a worker's shielded
-    // address is never on-chain — see payment.ts). Resolving workerKey ->
-    // shielded address is therefore also outside what this method can do
-    // honestly today; treating workerKey as if it already were the
-    // recipient address, as done here, is a placeholder that will fail
-    // against a real wallet and needs the same "report it" treatment as
-    // OfferNotYetReceivedError above.
     params.onStatus?.({ stage: 'proving' });
     params.onStatus?.({ stage: 'submitting' });
     await sendPrivatePayment(connectedApi, {
-      recipientShieldedAddress: params.workerKey,
+      recipientShieldedAddress: recipient,
       amount: params.amount,
     });
+
+    // Stops at 'pending' deliberately. The browser wallet's submitTransaction
+    // resolves to void, so there is no txId to correlate against the chain and
+    // nothing here has actually observed the transfer settle. Reporting
+    // 'confirmed' would be a claim this code cannot support — see the
+    // waitForPaymentConfirmed note in payment.ts.
     params.onStatus?.({ stage: 'pending' });
-    params.onStatus?.({ stage: 'confirmed' });
     return {};
+  }
+
+  async getMyShieldedAddress(): Promise<string> {
+    const connectedApi = this.requireConnectedApi();
+    const { shieldedAddress } = await connectedApi.getShieldedAddresses();
+    return shieldedAddress;
   }
 
   // ---------------------------------------------------------------------

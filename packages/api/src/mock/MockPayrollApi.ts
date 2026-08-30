@@ -114,6 +114,22 @@ export const DEMO_KARIM: WorkerKey = `0x${'7f3a'.repeat(16)}`;
 export const DEMO_DANA: WorkerKey = `0x${'91b2'.repeat(16)}`;
 export const DEMO_SAM: WorkerKey = `0x${'c4e8'.repeat(16)}`;
 
+/**
+ * Stand-in shielded addresses for the demo workers.
+ *
+ * Shaped like the real thing (`mn_shield-addr_…`, Bech32m) but not valid
+ * addresses — they exist so the employer app has something to send to while
+ * running against the mock. Note they look nothing like the worker keys above:
+ * that is the point. Nothing on-chain connects a worker's identity to where
+ * their money lands, and this mapping lives only in the employer's own records.
+ */
+export const DEMO_SHIELDED_ADDRESSES: Readonly<Record<WorkerKey, string>> = {
+  [DEMO_KARIM]: 'mn_shield-addr_test1karim0q9v7x2mfaketestaddressnotreal000',
+  [DEMO_DANA]: 'mn_shield-addr_test1dana0h4c8kfaketestaddressnotreal0000',
+  [DEMO_SAM]: 'mn_shield-addr_test1sam0w6t3nqfaketestaddressnotreal0000',
+  [DEMO_EMPLOYER]: 'mn_shield-addr_test1employer0z5faketestaddressnotreal0',
+};
+
 /** Karim is salaried. Dana is hourly. Sam has the unconfirmed month. */
 function seededStore(): Store {
   const store: Store = {
@@ -201,6 +217,17 @@ export class MockPayrollApi implements PayrollApi {
     return this.me;
   }
 
+  async getMyShieldedAddress(): Promise<string> {
+    await this.tick();
+    if (!this.walletStatus.connected) {
+      throw new PayrollError('Connect a wallet to see your shielded address.');
+    }
+    return (
+      DEMO_SHIELDED_ADDRESSES[this.me] ??
+      `mn_shield-addr_test1mock${this.me.slice(2, 14)}notreal`
+    );
+  }
+
   // --- wallet ----------------------------------------------------------------
 
   async connectWallet(): Promise<WalletStatus> {
@@ -223,11 +250,19 @@ export class MockPayrollApi implements PayrollApi {
 
   async payWorker(params: {
     workerKey: WorkerKey;
+    recipientShieldedAddress: string;
     amount: Amount;
     onStatus?: OnTransactionStatus;
   }): Promise<{ txId?: string }> {
     this.requireWorker(params.workerKey);
     if (!this.walletStatus.connected) throw new PayrollError('No wallet connected.');
+    // The real wallet rejects an empty or malformed recipient, so refuse here
+    // too rather than letting a UI look like it paid someone when it did not.
+    if (!params.recipientShieldedAddress?.trim()) {
+      throw new PayrollError(
+        "A shielded address is required — a worker key is not somewhere money can be sent.",
+      );
+    }
     return this.withLifecycle(params.onStatus, async () => ({ txId: fakeTxId() }));
   }
 

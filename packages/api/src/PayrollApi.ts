@@ -62,6 +62,23 @@ export interface PayrollApi {
    */
   getMyKey(): Promise<WorkerKey>;
 
+  /**
+   * Where this person receives shielded funds — their wallet's own shielded
+   * address, in Bech32m.
+   *
+   * Deliberately separate from {@link getMyKey}. A `WorkerKey` says *who you
+   * are inside the contract*; this says *where money goes*. The contract never
+   * learns this address, and it must never be written to the ledger: publishing
+   * the pair would let anyone match an employment record to a payment address.
+   *
+   * A worker shows this to their employer once, alongside their worker key,
+   * over the same out-of-band channel — see `A_docs/06` question 1 for why that
+   * channel needs care.
+   *
+   * Requires a connected wallet, since it comes from the wallet itself.
+   */
+  getMyShieldedAddress(): Promise<string>;
+
   // -------------------------------------------------------------------------
   // Wallet  (used by C and D — anything that signs a transaction)
   // -------------------------------------------------------------------------
@@ -97,7 +114,18 @@ export interface PayrollApi {
    * depends on receiving it.
    */
   payWorker(params: {
+    /** Who is being paid, for the app's own records. Never sent to the wallet. */
     workerKey: WorkerKey;
+    /**
+     * Where the money actually goes: the worker's shielded address, from their
+     * own {@link getMyShieldedAddress}.
+     *
+     * This is required and cannot be derived from `workerKey` — the two are
+     * unrelated by design, and nothing on-chain connects them. The employer
+     * gets it from the worker at hiring and stores it wherever they keep the
+     * rest of the worker's off-chain details.
+     */
+    recipientShieldedAddress: string;
     amount: Amount;
     onStatus?: OnTransactionStatus;
   }): Promise<{ txId?: string }>;
