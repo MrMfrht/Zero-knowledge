@@ -4,6 +4,49 @@
   "runtime-version": "0.16.0",
   "circuits": [
     {
+      "name": "dappKey",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "sk",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "sealRate",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "rate",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "hire",
       "pure": false,
       "proof": true,
@@ -127,6 +170,65 @@
         "types": [
         ]
       }
+    },
+    {
+      "name": "proveContribution",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "period",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        },
+        {
+          "name": "rate",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "declared",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "endEmployment",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "worker",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
     }
   ],
   "witnesses": [
@@ -182,8 +284,31 @@
       }
     },
     {
-      "name": "paidFor",
+      "name": "contributionRate",
       "index": 3,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Uint",
+        "maxval": 255
+      }
+    },
+    {
+      "name": "contributionOk",
+      "index": 4,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Boolean"
+      }
+    },
+    {
+      "name": "paidFor",
+      "index": 5,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -196,7 +321,7 @@
     },
     {
       "name": "active",
-      "index": 4,
+      "index": 6,
       "exported": true,
       "storage": "Map",
       "key": {

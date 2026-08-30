@@ -20,6 +20,13 @@ export type ImpureCircuits<PS> = {
                  rate_0: bigint,
                  salt_0: Uint8Array,
                  amountReceived_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  proveContribution(context: __compactRuntime.CircuitContext<PS>,
+                    period_0: bigint,
+                    rate_0: bigint,
+                    salt_0: Uint8Array,
+                    declared_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  endEmployment(context: __compactRuntime.CircuitContext<PS>,
+                worker_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -38,12 +45,25 @@ export type ProvableCircuits<PS> = {
                  rate_0: bigint,
                  salt_0: Uint8Array,
                  amountReceived_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  proveContribution(context: __compactRuntime.CircuitContext<PS>,
+                    period_0: bigint,
+                    rate_0: bigint,
+                    salt_0: Uint8Array,
+                    declared_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  endEmployment(context: __compactRuntime.CircuitContext<PS>,
+                worker_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
+  dappKey(sk_0: Uint8Array): Uint8Array;
+  sealRate(rate_0: bigint, salt_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
+  dappKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  sealRate(context: __compactRuntime.CircuitContext<PS>,
+           rate_0: bigint,
+           salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   hire(context: __compactRuntime.CircuitContext<PS>,
        worker_0: Uint8Array,
        rateCommitment_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
@@ -59,6 +79,13 @@ export type Circuits<PS> = {
                  rate_0: bigint,
                  salt_0: Uint8Array,
                  amountReceived_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  proveContribution(context: __compactRuntime.CircuitContext<PS>,
+                    period_0: bigint,
+                    rate_0: bigint,
+                    salt_0: Uint8Array,
+                    declared_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  endEmployment(context: __compactRuntime.CircuitContext<PS>,
+                worker_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -76,6 +103,14 @@ export type Ledger = {
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): bigint;
     [Symbol.iterator](): Iterator<[Uint8Array, bigint]>
+  };
+  readonly contributionRate: bigint;
+  contributionOk: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<[Uint8Array, boolean]>
   };
   paidFor: {
     isEmpty(): boolean;
@@ -103,7 +138,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   impureCircuits: ImpureCircuits<PS>;
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
-  initialState(context: __compactRuntime.ConstructorContext<PS>): __compactRuntime.ConstructorResult<PS>;
+  initialState(context: __compactRuntime.ConstructorContext<PS>,
+               contributionPct_0: bigint): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;

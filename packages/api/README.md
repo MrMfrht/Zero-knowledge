@@ -78,7 +78,7 @@ about.
 |---|---|---|
 | 1 | `hire()` returns `ratePerPeriod` **and** `salt` separately | The employer has to get two values to the worker by hand. Likely becomes one shareable `offerCode` string that encodes both |
 | 2 | The read methods sit on `PayrollApi` | `getEmploymentRecord` and `listEmploymentRecords` need no wallet, yet E still has to pass `actingAs: '0xanyone'`. They probably split into a separate `PayrollReader` |
-| 3 | Contribution rate is hardcoded at 25% | Belongs in contract state or config, not in the mock |
+| ~~3~~ | ~~Contribution rate is hardcoded at 25%~~ | **Closed.** It is now `sealed ledger contributionRate`, set by the constructor (`contributionPct`) and readable by anyone |
 | 4 | `PeriodStatus` is derived by a heuristic | The mock treats "most recent period" as open and older unconfirmed ones as failed. Real logic needs a deadline from A's contract |
 | ~~5~~ | ~~No `connect()` / `disconnect()`~~ | **Closed.** B added `connectWallet`/`disconnectWallet`/`getWalletStatus` alongside SPIKE-PAY |
 | 6 | Whatever the contract cannot actually do | Some method may not map cleanly onto a circuit. We find out when B builds it |

@@ -24,7 +24,7 @@ project actually does. It assumes no blockchain knowledge.)*
 | **04** | [Compact arithmetic](04-compact-arithmetic.md) | Compiled findings: Compact has **no division operator**, multiplication widens the type, and what that means for our circuits. |
 | **05** | [Keys, storage and identity](05-keys-storage-and-identity.md) | Is browser storage safe? Does a worker's key prove who they are? (No — and the difference between *continuity* of identity and *verification* of it.) |
 | **06** | [Open design questions](06-open-design-questions.md) | **Live register of gaps that could bite us.** Read before the demo — anything still OPEN belongs on the honest slide. |
-| **07** | [The circuit map](07-circuit-map.md) | Key vs secret, why `localSk()` means "whoever is calling", **which app (C/D/E) calls each circuit and on whose machine it runs**, and circuits 3–4 explained in depth. |
+| **07** | [The circuit map](07-circuit-map.md) | Key vs secret, why `localSk()` means "whoever is calling", **which app (C/D/E) calls each circuit and on whose machine it runs**, and circuits 3–6 explained in depth. |
 
 Read `01` before anything else. `02` and `03` answer questions that come up once
 the code starts making sense. `04` is a reference — check it before writing maths.

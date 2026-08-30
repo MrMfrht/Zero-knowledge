@@ -2,7 +2,7 @@
 
 *The question that unlocks the whole design: every circuit runs on the machine of
 whoever calls it, using **that person's** secret. This document makes that
-concrete for all six circuits, then explains circuits 3 and 4 in detail.*
+concrete for all six circuits, then explains circuits 3 through 6 in detail.*
 
 ---
 
@@ -247,6 +247,109 @@ all, leaving the period stuck before this circuit can run. That is
 deadline, not built yet.)*
 
 ---
+
+---
+
+# Part 5b — Circuit 5: `proveContribution`, explained
+
+## The fraud it closes
+
+Wherever social security is a percentage of *declared* salary, the classic move
+is: pay Karim 5,000, declare 3,000 to the fund, pocket the difference in
+contributions. Karim sees a deduction on his payslip and has **no way to check
+what was actually reported** — until a pension claim falls short, decades later.
+
+## The code
+
+```compact
+export circuit proveContribution(
+    period: Uint<32>, rate: Uint<64>, salt: Bytes<32>, declared: Uint<64>
+): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(active.member(k), "you have not accepted an offer");
+
+    const pk = disclose(periodKey(k, period));
+    assert(approvedHours.member(pk), "no approved hours for this period");
+    assert(!contributionOk.member(pk), "this period's contribution is already proven");
+
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "that is not your agreed rate");
+
+    const hours = approvedHours.lookup(pk);
+    assert(declared * 100 ==
+               (hours as Uint<64>) * rate * (contributionRate as Uint<64>),
+           "the declaration does not match your real earnings");
+
+    contributionOk.insert(pk, true);
+}
+```
+
+Runs on **Karim's machine** (called from **app C**), same anchors as
+`confirmPayment`: the rate must open the seal from hiring, and the hours come
+from the ledger.
+
+## Three details that are easy to miss
+
+**The maths is a cross-multiplication.** The natural statement is
+`declared == earnings × pct ÷ 100` — but Compact has no division operator
+(verified by compiling, [A_docs/04](04-compact-arithmetic.md)). Multiplying both
+sides by 100 says the same thing:
+
+```
+declared × 100  ==  hours × rate × contributionRate
+```
+
+**`declared` must stay private, and here is the trap:** `contributionRate` is
+public (it is the law's number — 25 sits openly on the ledger). If `declared`
+were ever published, anyone could compute the salary from it:
+`rate = declared × 100 ÷ pct`. So `declared` goes into the proof and nowhere
+else — exactly like the amount in `confirmPayment`.
+
+**The power comes from *when* the commitment was made.** The rate was sealed at
+hiring — before anyone had a reason to lie about contributions. The employer
+cannot retroactively pretend a lower salary was agreed, because the seal will
+not open to it.
+
+Smoke-tested: declaring 1,250 (25% of real 5,000 earnings) passes; declaring
+1,000 is rejected with *"the declaration does not match your real earnings."*
+
+---
+
+# Part 5c — Circuit 6: `endEmployment`, explained
+
+## The problem
+
+People leave. But Karim's two years of confirmed periods are **his** — proof of
+employment he may need for a loan, a visa, his next job. An ex-employer must not
+be able to erase it.
+
+## The code
+
+```compact
+export circuit endEmployment(worker: Bytes<32>): [] {
+    assert(dappKey(localSk()) == employerKey, "only the employer may end employment");
+
+    const w = disclose(worker);
+    assert(active.member(w), "this worker never accepted an offer");
+    assert(active.lookup(w), "this worker's employment has already ended");
+
+    active.insert(w, false);
+}
+```
+
+Runs on the **employer's machine** (called from **app D**), anchored to
+`employerKey` like every employer circuit.
+
+**Nothing is deleted — that is the entire design.** `active` flips to `false`;
+`paidFor`, `contributionOk` and `approvedHours` keep every entry forever. The
+worker's last confirmed period becomes their leaving date. What ends is the
+ability to add *new* periods: `approveHours` and `confirmPayment` both check
+`active` and refuse from now on — smoke-tested on both sides.
+
+*(This is also why `active` has three states: absent = offered, `true` =
+employed, `false` = ended. Deleting the entry instead would make "ended" and
+"never here" indistinguishable, which would erase exactly the history the
+product exists to preserve.)*
 
 # Part 6 — What each app builds against, in one glance
 

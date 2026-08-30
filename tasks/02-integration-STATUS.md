@@ -34,7 +34,7 @@ This is the news. Everything `MidnightPayrollApi` needs from A now exists:
 | | Where |
 |---|---|
 | Compiled contract — TS bindings + ledger types | `packages/contract/src/managed/contract/` |
-| Circuits compiled | `hire`, `acceptHire`, `approveHours`, `confirmPayment` (4 of 6) |
+| Circuits compiled | **All six** — plus exported `pureCircuits.dappKey(sk)` and `pureCircuits.sealRate(rate, salt)`, which are exactly the helpers your api needs. Note: the constructor now takes `contributionPct` (e.g. `25n`) |
 | **`witnesses.ts`** — supplies `localSk`, storage-agnostic | `packages/contract/src/witnesses.ts` |
 | Proof it all runs | `npm run smoke -w @nightshift/contract` — deploys locally, hires as employer, rejects a stranger |
 | The map of who calls what | [`A_docs/07-circuit-map.md`](../A_docs/07-circuit-map.md) |
@@ -68,9 +68,10 @@ matters until this exists.
 
 Your spec is the ["For B" section of the api README](../packages/api/README.md)
 — method-to-circuit mapping, which error class to throw for each assert failure,
-and your definition of done. Two circuits (`proveContribution`, `endEmployment`)
-are still being written; stub those two methods with a clear `throw` and build
-the other nine.
+and your definition of done. **All six circuits now compile**, so nothing needs
+stubbing. `smoke.mjs` exercises the complete lifecycle including every failure
+case — it is your worked example for contexts, state threading between calls
+(`r.context.currentQueryContext.state`), and per-caller private state.
 
 ### 2. The deploy script
 

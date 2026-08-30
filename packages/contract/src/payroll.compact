@@ -35,6 +35,15 @@ export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
 /// salaried and fixed-price work.
 export ledger approvedHours: Map<Bytes<32>, Uint<32>>;
 
+/// Social-security percentage, e.g. 25 means 25%. Fixed at deployment and
+/// public — the law's number, not anyone's secret.
+export sealed ledger contributionRate: Uint<8>;
+
+/// H(workerKey, period) -> was the social-security declaration for this period
+/// calculated on the worker's REAL earnings? One boolean; the earnings, the
+/// rate and the declared amount all stay private.
+export ledger contributionOk: Map<Bytes<32>, Boolean>;
+
 /// H(workerKey, period) -> was this period paid correctly?
 ///
 /// The entire public output of the product. One boolean per worker per period.
@@ -65,8 +74,15 @@ witness localSk(): Bytes<32>;
 /// `pure` because it touches no ledger state. The domain separator means the
 /// same person gets a different identity in a different app, so their activity
 /// here cannot be linked to their activity elsewhere.
-pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]);
+export pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
+    return disclose(persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]));
+}
+
+/// Seal a rate. Exported so the api computes commitments EXACTLY as the
+/// contract checks them — reimplementing this in TypeScript and getting the
+/// byte encoding subtly wrong would break acceptHire forever.
+export pure circuit sealRate(rate: Uint<64>, salt: Bytes<32>): Bytes<32> {
+    return persistentCommit<Uint<64>>(rate, salt);
 }
 
 /// One worker, one period — a single key for the `approvedHours` map.
@@ -84,9 +100,12 @@ pure circuit periodKey(worker: Bytes<32>, period: Uint<32>): Bytes<32> {
 
 // --- deployment ------------------------------------------------------------
 
-/// Whoever deploys the contract becomes the employer.
-constructor() {
-    employerKey = disclose(dappKey(localSk()));
+/// Whoever deploys the contract becomes the employer, and the social-security
+/// percentage is fixed for the contract's whole life.
+constructor(contributionPct: Uint<8>) {
+    assert(contributionPct <= 100, "contribution rate is a percentage");
+    employerKey = dappKey(localSk());
+    contributionRate = disclose(contributionPct);
 }
 
 // --- circuits --------------------------------------------------------------
@@ -204,4 +223,61 @@ export circuit confirmPayment(
     assert(amountReceived == (hours as Uint<64>) * rate, "incorrect payment");
 
     paidFor.insert(pk, true);
+}
+
+/// The worker proves the social-security declaration was calculated on their
+/// REAL earnings — without revealing the earnings, the rate, or the declaration.
+///
+/// The fraud this closes: the employer pays 5000 but declares 3000 to the fund,
+/// pocketing the difference in contributions. Today the worker sees a payslip
+/// deduction and has no way to check what was actually reported — until a
+/// pension claim fails, decades later.
+///
+/// Runs on the WORKER's machine. The check is
+///     declared == earnings x contributionRate / 100
+/// written as a cross-multiplication because Compact has no division operator
+/// (verified by compiling — see A_docs/04):
+///     declared x 100 == hours x rate x contributionRate
+///
+/// `declared` stays private on purpose: contributionRate is public, so
+/// publishing `declared` would let anyone compute the rate from it.
+export circuit proveContribution(
+    period: Uint<32>,
+    rate: Uint<64>,
+    salt: Bytes<32>,
+    declared: Uint<64>
+): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(active.member(k), "you have not accepted an offer");
+
+    const pk = disclose(periodKey(k, period));
+    assert(approvedHours.member(pk), "no approved hours for this period");
+    assert(!contributionOk.member(pk), "this period's contribution is already proven");
+
+    // Same anchor as confirmPayment: the rate must open the seal from hiring.
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "that is not your agreed rate");
+
+    const hours = approvedHours.lookup(pk);
+    assert(declared * 100 ==
+               (hours as Uint<64>) * rate * (contributionRate as Uint<64>),
+           "the declaration does not match your real earnings");
+
+    contributionOk.insert(pk, true);
+}
+
+/// The employer marks a worker as no longer employed.
+///
+/// Nothing is deleted — that is the point. The worker's confirmed periods stay
+/// on the public record forever; their last confirmed period becomes their
+/// leaving date. What ends is the ability to add new periods: approveHours and
+/// confirmPayment both check `active` and will refuse from now on.
+export circuit endEmployment(worker: Bytes<32>): [] {
+    assert(dappKey(localSk()) == employerKey, "only the employer may end employment");
+
+    const w = disclose(worker);
+    assert(active.member(w), "this worker never accepted an offer");
+    assert(active.lookup(w), "this worker's employment has already ended");
+
+    active.insert(w, false);
 }

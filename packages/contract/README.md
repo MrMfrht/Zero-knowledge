@@ -25,13 +25,17 @@ npm run smoke -w @nightshift/contract
 ```
 
 ```
-1. deploy: employerKey = 32 bytes ✅
-2. hire as employer: OK, agreedRate size = 1n ✅
-3. stranger rejected ✅ — failed assert: only the employer may hire
+hire ✅ · stranger rejected ❌ · wrong-rate accept rejected ❌ · acceptHire ✅
+approveHours ✅ · UNDERPAYMENT of 4000 rejected ❌ ← THE DEMO · confirm ✅
+double-confirm rejected ❌ · under-declared contribution rejected ❌
+proveContribution ✅ · endEmployment ✅ · post-end approvals rejected ❌
+
+final public ledger: paidFor 1 ✓, contributionOk 1 ✓, active(karim) false
+anywhere to read a salary or amount: NO — the ledger type has no such field
 ```
 
-Line 3 is the anchor from [A_docs/03](../../A_docs/03-who-can-call-a-circuit.md),
-demonstrated: a caller with the wrong secret cannot even produce the transaction.
+Every ❌ is a rejection we want, each failing with our exact assert message.
+The underpayment line is the demo, running locally for real.
 
 B: construct with `new Contract(witnesses)` and build private state with
 `createPayrollPrivateState(secretKey)` — see the comments in the file.
@@ -54,8 +58,21 @@ can use the contract without installing the Compact toolchain.
 | `acceptHire` | ✅ compiles | Worker verifies the seal matches what they were told |
 | `approveHours` | ✅ compiles | Employer approves a timesheet |
 | `confirmPayment` | ✅ compiles | **The one the product exists for.** Worker proves the payment matched the sealed rate |
-| `proveContribution` | not yet | Proves social security used the real salary |
-| `endEmployment` | not yet | Marks a worker inactive |
+| `proveContribution` | ✅ compiles | Proves the social-security declaration used the REAL earnings — cross-multiplied, since Compact has no division |
+| `endEmployment` | ✅ compiles | Marks a worker inactive; history stays forever |
+
+**All six circuits compile. The full lifecycle is exercised by the smoke run.**
+
+Two pure helpers are also exported, because the api needs them and must match
+the contract byte-for-byte:
+
+| Helper | Use |
+|---|---|
+| `pureCircuits.dappKey(sk)` | Show a user their own key (C's "Your worker key" screen) |
+| `pureCircuits.sealRate(rate, salt)` | Compute the commitment in `hire` exactly as `acceptHire` will check it |
+
+The constructor now takes one argument: `contributionPct` (e.g. `25n`) — the
+social-security percentage, sealed for the contract's life.
 
 ## Read first
 
