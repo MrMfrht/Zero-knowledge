@@ -5,7 +5,9 @@
 **Your folder:** `packages/contract/`
 **Your branch:** `contract` (branched from `dev`)
 
-> ### 👉 New to blockchain? Read [01-contract-EXPLAINED.md](01-contract-EXPLAINED.md) first.
+> ### 👉 New to blockchain? Read [01-contract-EXPLAINED.md](../A_docs/01-understanding-the-contract.md) first.
+>
+> And once `hire` compiles, **[CIRCUIT-1-HIRE.md](../A_docs/02-files-and-the-typescript-bridge.md)** walks through every generated file, how Compact and TypeScript connect, and the full hiring flow in code.
 >
 > It explains — assuming zero prior knowledge — what a salt is, what a commitment
 > is, why a `Map` publishes your salary to the world, why `ownPublicKey()` cannot
@@ -148,7 +150,7 @@ A full draft with explanations is in [the build plan, Part 2](../Ideas/NightShif
 ### Arithmetic — already spiked, read this before writing a circuit
 
 The lead compiled four throwaway contracts to settle how Compact arithmetic
-behaves. Full write-up: **[SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md)**. The three results that change what you write:
+behaves. Full write-up: **[SPIKE-ARITHMETIC.md](../A_docs/04-compact-arithmetic.md)**. The three results that change what you write:
 
 1. **`confirmPayment` is fine as designed.** `amount == (hours as Uint<64>) * rate` compiles, and it is safe — Compact widens the product to a ~128-bit range instead of wrapping, so there is no overflow to exploit.
 2. **Never store a product.** Assigning `hours * rate` to a `Uint<64>` is a compile error, because the product's range is `Uint<0..(2^64-1)^2>`. Comparing is fine; storing needs a cast that could truncate.

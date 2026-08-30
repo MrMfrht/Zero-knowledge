@@ -17,6 +17,8 @@ packages/
   README.md                        What src/dist mean, why two folders — read first
   shared/                          Domain types. No Midnight imports, ever.
   api/                             PayrollApi interface + mock. README.md is the team guide.
+A_docs/                            Deep contract detail — A only. README.md is the index
+D_docs/                            Backend implementation plan — D only
 tasks/
   RULEBOOK.md                      One-page team rules
   COMMON.md                        Shared setup; one task file per team member

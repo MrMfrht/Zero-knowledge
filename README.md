@@ -53,6 +53,8 @@ docs/
   midnight-explained{,-part2,-part3}.md   Plain-language explainer series
   midnight-docs-map.md                    Annotated index of the Midnight documentation
   midnight-privacy-model.md               What Midnight hides — and the design constraints
+A_docs/                                   Deep contract detail — A only
+D_docs/                                   Backend plan — D only
 tasks/
   RULEBOOK.md                             One-page team rules — keep this open
   COMMON.md                               Setup everyone does first — start here

@@ -102,7 +102,7 @@ proveContribution(March, declared, 5000, salt):
 ```
 
 *(Written as a cross-multiplication because Compact has no division operator —
-confirmed by compiling it. See [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md).)*
+confirmed by compiling it. See [SPIKE-ARITHMETIC.md](../A_docs/04-compact-arithmetic.md).)*
 
 The worker can prove their contributions were computed on their real salary — without revealing the salary. An under-declaring employer leaves a permanent, public gap they cannot fill. This works as employee-held evidence for a tribunal or inspection **whether or not the fund itself ever adopts anything**.
 
@@ -220,7 +220,7 @@ Design rules carried over from [the privacy model](../docs/midnight-privacy-mode
 - **Identity is a derived key, never `ownPublicKey()`** — that's a witness the prover's machine controls; the docs say never to authenticate with it ([Smart contract security](https://docs.midnight.network/compact/smart-contract-security)).
 - **`persistentCommit` output needs no `disclose()`** — the salt satisfies the compiler; `persistentHash` output does need one ([Explicit disclosure](https://docs.midnight.network/compact/reference/explicit-disclosure)).
 - **Fresh salt per commitment, domain separators per purpose** ([Smart contract security](https://docs.midnight.network/compact/smart-contract-security)).
-- **The multiplication was spiked and is safe.** `amount == (hours as Uint<64>) * rate` compiles, and Compact widens the product rather than wrapping, so there is no overflow to exploit. Storing a product is a compile error, and **Compact has no division operator at all** — see [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md).
+- **The multiplication was spiked and is safe.** `amount == (hours as Uint<64>) * rate` compiles, and Compact widens the product rather than wrapping, so there is no overflow to exploit. Storing a product is a compile error, and **Compact has no division operator at all** — see [SPIKE-ARITHMETIC.md](../A_docs/04-compact-arithmetic.md).
 - **No escrow anywhere.** The contract never holds a coin. This is the single biggest de-risking decision in the design: everything the [shielded token tutorial](https://docs.midnight.network/tokens/shielded-token) lists as hard (contract shielded balances, fresh-vs-committed coins, caller-only `sendShielded`) simply does not apply.
 
 ---

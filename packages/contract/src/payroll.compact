@@ -1,0 +1,207 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ---------------------------------------------------------------------------
+// NightShift — private payroll with public proof.
+//
+// Everything declared `ledger` below is PUBLIC: it lives on-chain and anyone
+// in the world can read it. So no salary appears here. What appears instead is
+// a commitment — a hash of the salary and a secret random salt — which hides
+// the number while making it impossible to change later.
+//
+// See tasks/01-contract-EXPLAINED.md for why any of this is shaped the way it is.
+// ---------------------------------------------------------------------------
+
+// --- public state ----------------------------------------------------------
+
+/// Who is allowed to hire. Derived from the deployer's secret in the
+/// constructor, and `sealed` so no later circuit can ever move it.
+export sealed ledger employerKey: Bytes<32>;
+
+/// workerKey -> persistentCommit(ratePerPeriod, salt)
+///
+/// The VALUES in a Map are public, which is exactly why a commitment goes here
+/// and not a salary. Publishing this map tells an observer nothing.
+export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
+
+/// H(workerKey, period) -> hours the employer approved for that period
+///
+/// Hours are public ON PURPOSE. The employer already knows them, and hours
+/// alone reveal nothing about pay — only the rate is sensitive. This is what
+/// selective disclosure means in practice: hide exactly what needs hiding.
+///
+/// Salaried workers use 1, so `1 x rate = rate`. One circuit covers hourly,
+/// salaried and fixed-price work.
+export ledger approvedHours: Map<Bytes<32>, Uint<32>>;
+
+/// H(workerKey, period) -> was this period paid correctly?
+///
+/// The entire public output of the product. One boolean per worker per period.
+/// Present and true means the worker proved, in zero knowledge, that the money
+/// they received equalled hours x their sealed rate. Absent means they did not.
+///
+/// No amount appears here, or anywhere else on this ledger.
+export ledger paidFor: Map<Bytes<32>, Boolean>;
+
+/// workerKey -> is this person currently employed?
+///
+/// Three states, deliberately:
+///   absent  — the employer has made an offer, the worker has not accepted yet
+///   true    — accepted and currently employed
+///   false   — employment ended (set by `endEmployment`; history is never deleted)
+export ledger active: Map<Bytes<32>, Boolean>;
+
+// --- private input ---------------------------------------------------------
+
+/// The caller's 32-byte secret. Lives on their own device and is never
+/// transmitted. Implemented in TypeScript by the `api` package.
+witness localSk(): Bytes<32>;
+
+// --- identity --------------------------------------------------------------
+
+/// A caller's public identity: the hash of their secret.
+///
+/// `pure` because it touches no ledger state. The domain separator means the
+/// same person gets a different identity in a different app, so their activity
+/// here cannot be linked to their activity elsewhere.
+pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]);
+}
+
+/// One worker, one period — a single key for the `approvedHours` map.
+///
+/// A `Map` takes one key, but a timesheet is identified by two things. Hashing
+/// them together gives one 32-byte value that is unique to the pair.
+///
+/// The domain separator differs from `dappKey`'s, so a period key can never
+/// collide with an identity key.
+pure circuit periodKey(worker: Bytes<32>, period: Uint<32>): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>(
+        [pad(32, "nightshift:period:"), worker, period as Bytes<32>]);
+}
+/// This is the answer to your ownPublicKey() question in code. We never ask "who are you?" We compute the hash of your secret and compare. To pass as the employer you'd need a secret whose hash equals employerKey — which means reversing a hash.
+
+// --- deployment ------------------------------------------------------------
+
+/// Whoever deploys the contract becomes the employer.
+constructor() {
+    employerKey = disclose(dappKey(localSk()));
+}
+
+// --- circuits --------------------------------------------------------------
+
+/// Seal a worker's agreed rate on-chain.
+///
+/// The employer computes `persistentCommit(rate, salt)` off-chain and passes
+/// only the result. The rate and salt themselves never reach this contract —
+/// they go to the worker directly, who checks them in `acceptHire`.
+///
+/// No funds move. A commitment commits to a *number*, not to money.
+export circuit hire(worker: Bytes<32>, rateCommitment: Bytes<32>): [] {
+    // Authenticate by proving knowledge of the employer's secret. Never by
+    // asking who the caller is — see ownPublicKey() in the explainer.
+    assert(dappKey(localSk()) == employerKey, "only the employer may hire");
+
+    const w = disclose(worker);
+    assert(!agreedRate.member(w), "this worker already has a sealed rate");
+
+    agreedRate.insert(w, disclose(rateCommitment));
+}
+
+/// The worker checks that the sealed rate really is the number they were told,
+/// then accepts the job.
+///
+/// This circuit exists because a commitment is unreadable. The employer could
+/// promise 5000 and seal 4000, and the worker would have no way to tell — until
+/// payday, when nothing would add up. So before starting work, the worker
+/// reproduces the commitment from the rate and salt they were actually given
+/// and checks it against what is on-chain.
+///
+/// A mismatch fails the transaction. The worker finds out on day zero, not on
+/// payday.
+///
+/// Only this worker can call this for themselves: `k` is derived from the
+/// caller's own secret, so nobody can accept on anyone else's behalf.
+export circuit acceptHire(rate: Uint<64>, salt: Bytes<32>): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(agreedRate.member(k), "no offer has been made to you");
+    assert(!active.member(k), "you have already accepted this offer");
+
+    // The anchor. `rate` and `salt` come from the worker's own machine, so on
+    // their own they prove nothing — but only the original pair can reproduce
+    // the commitment the employer already published.
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "the sealed rate does not match the rate and salt you were given");
+
+    active.insert(k, true);
+}
+
+/// The employer approves a timesheet, which unlocks that period for payment.
+///
+/// Runs on the EMPLOYER's machine, using the EMPLOYER's secret — unlike
+/// `acceptHire`, which runs on the worker's. `localSk()` always means "the
+/// secret of whoever is calling right now".
+///
+/// Hours go on the public ledger deliberately. The employer already knows them,
+/// and hours alone say nothing about pay. Pass 1 for salaried workers.
+///
+/// Approving is a precondition for `confirmPayment`: a worker cannot confirm a
+/// period the employer has not signed off.
+export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>): [] {
+    assert(dappKey(localSk()) == employerKey, "only the employer may approve hours");
+
+    const w = disclose(worker);
+    assert(active.member(w), "this worker has not accepted an offer");
+    assert(active.lookup(w), "this worker's employment has ended");
+
+    approvedHours.insert(disclose(periodKey(w, period)), disclose(hours));
+}
+
+/// The worker proves the money that arrived was exactly what was agreed.
+///
+/// THIS IS THE PRODUCT. Everything else exists to make this circuit possible.
+///
+/// Runs on the WORKER's machine, with the WORKER's secret. Three private
+/// numbers go in — the rate, the salt and the amount received — and exactly one
+/// public fact comes out: this period was paid correctly. None of the three
+/// ever reaches the ledger.
+///
+/// Note what is NOT an argument: `hours`. It is read from the ledger, where the
+/// employer put it. The worker cannot claim to have worked more hours than were
+/// approved, because they never get to supply that number at all.
+///
+/// The failure case is the demo. If the employer sent 4000 when 5000 was
+/// agreed, the last assertion fails, no proof can be produced, and the period
+/// stays permanently unconfirmed on a public ledger — while the salary itself
+/// stays unreadable to everyone on earth.
+export circuit confirmPayment(
+    period: Uint<32>,
+    rate: Uint<64>,
+    salt: Bytes<32>,
+    amountReceived: Uint<64>
+): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(active.member(k), "you have not accepted an offer");
+    assert(active.lookup(k), "your employment has ended");
+
+    const pk = disclose(periodKey(k, period));
+    assert(approvedHours.member(pk), "the employer has not approved hours for this period yet");
+    assert(!paidFor.member(pk), "this period is already confirmed");
+
+    // Anchor 1: this really is the rate sealed at hiring. Without this the
+    // check below would be worthless — the worker picks both numbers, so of
+    // course they would agree with each other.
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "that is not your agreed rate");
+
+    // Anchor 2: the hours the EMPLOYER approved, not any the worker supplied.
+    const hours = approvedHours.lookup(pk);
+
+    // The check the whole product is built on. Comparing a product is safe —
+    // Compact widens it rather than wrapping, so there is no overflow to
+    // exploit. Storing it would be a compile error. See A_docs/04.
+    assert(amountReceived == (hours as Uint<64>) * rate, "incorrect payment");
+
+    paidFor.insert(pk, true);
+}
