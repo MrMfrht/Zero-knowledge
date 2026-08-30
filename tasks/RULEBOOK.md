@@ -30,6 +30,8 @@ Want to understand *why* any of this works — salts, commitments, zero-knowledg
 
 Before the demo, everyone reads **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)** — the questions judges actually ask, honest answers, and who on the team answers what.
 
+Also skim **[A_docs/06-open-design-questions.md](../A_docs/06-open-design-questions.md)** — the known gaps in the design. Anything still marked OPEN is something a judge could find, so we say it first. Three of them affect C, D and B directly.
+
 Writing code? Read **[packages/README.md](../packages/README.md)** first (what the folders are, three minutes), then **[packages/api/README.md](../packages/api/README.md)** — the API guide, one section per person.
 
 ---

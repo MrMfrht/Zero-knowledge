@@ -22,6 +22,8 @@ project actually does. It assumes no blockchain knowledge.)*
 | **02** | [Files and the TypeScript bridge](02-files-and-the-typescript-bridge.md) | What is every file in `packages/contract`? Why are there two programming languages? How do they connect? The full hiring flow, step by step. |
 | **03** | [Who can call a circuit](03-who-can-call-a-circuit.md) | If the secret lives on the user's machine, how do we get it? Can a stranger call `hire`? What stops them? |
 | **04** | [Compact arithmetic](04-compact-arithmetic.md) | Compiled findings: Compact has **no division operator**, multiplication widens the type, and what that means for our circuits. |
+| **05** | [Keys, storage and identity](05-keys-storage-and-identity.md) | Is browser storage safe? Does a worker's key prove who they are? (No — and the difference between *continuity* of identity and *verification* of it.) |
+| **06** | [Open design questions](06-open-design-questions.md) | **Live register of gaps that could bite us.** Read before the demo — anything still OPEN belongs on the honest slide. |
 
 Read `01` before anything else. `02` and `03` answer questions that come up once
 the code starts making sense. `04` is a reference — check it before writing maths.
