@@ -12,6 +12,30 @@ npm run compact:full -w @nightshift/contract   # slow: real proving keys, minute
 Use `--skip-zk` (the `compact` script) for every compile while writing. It checks
 correctness only. Drop it — run `compact:full` — when B needs real proving keys.
 
+## `witnesses.ts` — the TypeScript half, now written
+
+`src/witnesses.ts` supplies `localSk` — the secret the circuits ask for. It is
+the file the generated `Contract` class refuses to be constructed without.
+Typechecked against `@midnight-ntwrk/compact-runtime` 0.16.0.
+
+Proven working by a local smoke run:
+
+```bash
+npm run smoke -w @nightshift/contract
+```
+
+```
+1. deploy: employerKey = 32 bytes ✅
+2. hire as employer: OK, agreedRate size = 1n ✅
+3. stranger rejected ✅ — failed assert: only the employer may hire
+```
+
+Line 3 is the anchor from [A_docs/03](../../A_docs/03-who-can-call-a-circuit.md),
+demonstrated: a caller with the wrong secret cannot even produce the transaction.
+
+B: construct with `new Contract(witnesses)` and build private state with
+`createPayrollPrivateState(secretKey)` — see the comments in the file.
+
 ## `src/managed/` is generated, and it is committed on purpose
 
 That folder is compiler output. **Never edit it.** It is committed so C, D and E
