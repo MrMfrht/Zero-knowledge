@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { MockPayrollApi, DEMO_EMPLOYER } from '@nightshift/api';
 import { Navbar } from './components/Navbar';
 import type { TabType } from './components/Navbar';
@@ -10,7 +10,8 @@ import { ShieldCheck, Info, CheckCircle2, Heart } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('team');
-  const [walletConnected, setWalletConnected] = useState(true);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletBusy, setWalletBusy] = useState(false);
   const [selectedWorkerKey, setSelectedWorkerKey] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -18,6 +19,35 @@ export default function App() {
   const api = useMemo(() => {
     return new MockPayrollApi({ actingAs: DEMO_EMPLOYER });
   }, []);
+
+  // Reflect the api's own wallet state rather than tracking a second,
+  // disconnected copy of it here — this is the one change that keeps this
+  // screen honest once MidnightPayrollApi replaces the mock (its
+  // hire/approveHours/payWorker genuinely throw with no wallet connected).
+  useEffect(() => {
+    let cancelled = false;
+    api.getWalletStatus().then((status) => {
+      if (!cancelled) setWalletConnected(status.connected);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  const handleToggleWallet = useCallback(async () => {
+    setWalletBusy(true);
+    try {
+      if (walletConnected) {
+        await api.disconnectWallet();
+        setWalletConnected(false);
+      } else {
+        const status = await api.connectWallet();
+        setWalletConnected(status.connected);
+      }
+    } finally {
+      setWalletBusy(false);
+    }
+  }, [api, walletConnected]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -42,7 +72,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         walletConnected={walletConnected}
-        setWalletConnected={setWalletConnected}
+        walletBusy={walletBusy}
+        onToggleWallet={handleToggleWallet}
       />
 
       {/* Main Content Area */}
@@ -82,9 +113,12 @@ export default function App() {
 
         {activeTab === 'pay' && (
           <PayWorker
+            api={api}
+            walletConnected={walletConnected}
+            onConnectWallet={handleToggleWallet}
             initialWorkerKey={selectedWorkerKey}
-            onPaymentSent={(workerKey, amount, period) => {
-              showToast(`Private payment of ${amount} DUST sent to ${workerKey.slice(0, 10)}... for ${period}`);
+            onPaymentSent={(workerKey, amount) => {
+              showToast(`Private shielded NIGHT payment of ${amount} sent to ${workerKey.slice(0, 10)}...`);
             }}
           />
         )}

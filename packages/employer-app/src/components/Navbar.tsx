@@ -8,14 +8,16 @@ interface NavbarProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   walletConnected: boolean;
-  setWalletConnected: (connected: boolean) => void;
+  walletBusy: boolean;
+  onToggleWallet: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   walletConnected,
-  setWalletConnected,
+  walletBusy,
+  onToggleWallet,
 }) => {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
@@ -98,15 +100,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             <button
-              onClick={() => setWalletConnected(!walletConnected)}
-              className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all border ${
+              onClick={onToggleWallet}
+              disabled={walletBusy}
+              className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all border disabled:opacity-60 ${
                 walletConnected
                   ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900/60'
                   : 'bg-indigo-950/60 text-indigo-300 border-indigo-500/40 hover:bg-indigo-900/60'
               }`}
             >
               <Wallet className="h-4 w-4" />
-              <span>{walletConnected ? 'Midnight Wallet (Lace)' : 'Connect Wallet'}</span>
+              <span>
+                {walletBusy ? 'Connecting…' : walletConnected ? 'Wallet Connected' : 'Connect Wallet'}
+              </span>
               <span className={`h-2 w-2 rounded-full ${walletConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
             </button>
           </div>
