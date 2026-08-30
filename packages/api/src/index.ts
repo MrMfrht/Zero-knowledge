@@ -8,7 +8,12 @@
  * Start here: packages/api/README.md
  */
 
-export type { PayrollApi } from './PayrollApi.js';
+export type {
+  OnTransactionStatus,
+  PayrollApi,
+  TransactionStatus,
+  WalletStatus,
+} from './PayrollApi.js';
 
 export {
   PayrollError,

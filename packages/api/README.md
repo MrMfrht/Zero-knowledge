@@ -80,7 +80,7 @@ about.
 | 2 | The read methods sit on `PayrollApi` | `getEmploymentRecord` and `listEmploymentRecords` need no wallet, yet E still has to pass `actingAs: '0xanyone'`. They probably split into a separate `PayrollReader` |
 | 3 | Contribution rate is hardcoded at 25% | Belongs in contract state or config, not in the mock |
 | 4 | `PeriodStatus` is derived by a heuristic | The mock treats "most recent period" as open and older unconfirmed ones as failed. Real logic needs a deadline from A's contract |
-| 5 | No `connect()` / `disconnect()` | The mock needs no wallet. The real implementation will |
+| ~~5~~ | ~~No `connect()` / `disconnect()`~~ | **Closed.** B added `connectWallet`/`disconnectWallet`/`getWalletStatus` alongside SPIKE-PAY |
 | 6 | Whatever the contract cannot actually do | Some method may not map cleanly onto a circuit. We find out when B builds it |
 
 Items 1 and 2 make the interface **simpler**, not different — an `offerCode` is one
@@ -122,6 +122,81 @@ Any change to `PayrollApi.ts` updates three things in the same commit:
 
 If those three ever disagree, this README is wrong and should be trusted last —
 the compiler is the source of truth.
+
+---
+
+## Wallet and payments
+
+Added by B alongside SPIKE-PAY. Needed by C and D for anything that signs a
+transaction; the read methods never touch a wallet.
+
+### Connect
+
+```ts
+import type { WalletStatus } from '@nightshift/api';
+
+const status: WalletStatus = await api.connectWallet();
+// { connected: true, address: 'mn_addr_…' }  — address only, never a key
+
+await api.getWalletStatus();   // poll or call after a route change
+await api.disconnectWallet();
+```
+
+`WalletStatus` carries an address and nothing else. No key, no salt, ever.
+
+**Gate your write buttons on it.** `hire`, `approveHours` and `payWorker` all
+need a connected wallet and throw without one.
+
+### Pay a worker
+
+```ts
+await api.payWorker({
+  workerKey: DEMO_KARIM,
+  amount: 5000n,
+  onStatus: (s) => setStage(s.stage),
+});
+```
+
+This is a **plain wallet-to-wallet shielded transfer. It does not touch the
+contract.** `confirmPayment` is the separate, later step where the worker checks
+the amount against the sealed rate — that is the only place any checking happens.
+
+> ### ⚠️ `txId` is optional and will often be absent
+>
+> ```ts
+> payWorker(...): Promise<{ txId?: string }>
+> ```
+>
+> The browser wallet's `submitTransaction` resolves to `void`, so the real
+> implementation has no reliable transaction id to hand back. B investigated the
+> alternatives and documented why each fails in `src/midnight/payment.ts`, rather
+> than fabricating one.
+>
+> The mock **does** return a txId. **Do not build UI that depends on receiving
+> it** — no "view transaction" link, no copy-the-hash button, no polling on it.
+> Show success from the promise resolving, not from a txId arriving.
+
+### Progress reporting
+
+Proving takes real seconds. Without feedback the UI just freezes, so `hire`,
+`approveHours` and `payWorker` all accept an optional `onStatus`:
+
+```ts
+type TransactionStatus =
+  | { stage: 'signing' | 'proving' | 'submitting' | 'pending' }
+  | { stage: 'confirmed'; txId?: string }     // txId optional here too
+  | { stage: 'failed'; error: PayrollError };
+```
+
+```ts
+await api.hire({
+  workerKey, ratePerPeriod: 5000n, expectedHours: 1,
+  onStatus: ({ stage }) => setStage(stage),   // 'proving' is the slow one
+});
+```
+
+`onStatus` is **optional everywhere**. Omit it and every method behaves exactly
+as it did before it existed — just `await` the result.
 
 ---
 
@@ -421,6 +496,10 @@ proof server image                  8.1.0
 | Method | Who calls it | Returns |
 |---|---|---|
 | `getMyKey()` | everyone | `WorkerKey` |
+| `connectWallet()` | C, D | `WalletStatus` |
+| `disconnectWallet()` | C, D | `void` |
+| `getWalletStatus()` | C, D | `WalletStatus` |
+| `payWorker({ workerKey, amount, onStatus? })` | employer | `{ txId?: string }` — **txId often absent** |
 | `hire({ workerKey, ratePerPeriod, expectedHours })` | employer | `Offer` |
 | `approveHours({ workerKey, period, hours })` | employer | `void` |
 | `endEmployment(workerKey)` | employer | `void` |

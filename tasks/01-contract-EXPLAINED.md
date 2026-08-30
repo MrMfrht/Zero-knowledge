@@ -119,11 +119,33 @@ Your own computer does the check, and produces a mathematical PROOF
               never saw your salary. Nobody did.
 ```
 
+<<<<<<< HEAD
 A **circuit** is a function in the contract, but it runs **on your own machine**. What gets sent to the network is not your data — it is a proof that says *"I ran this function honestly and the answer was yes."*
 
 The network can verify that proof is genuine without ever seeing what went into it. That is what "zero-knowledge" means: the network learns the **result** and zero **knowledge** about the inputs.
 
 This is real mathematics, not obfuscation. The network genuinely cannot see the inputs, even if it wanted to.
+=======
+### The definition
+
+> **A circuit is a function that, when it runs, also produces a receipt — a mathematical proof that it ran exactly as written and every check inside it passed.**
+
+Anyone can verify that receipt **without re-running the function, without seeing the inputs, and without being able to forge it.**
+
+Change one line of the code, skip one assertion, or have one `assert` fail, and **no valid proof exists.** You cannot produce one. The network rejects the transaction. This is not a policy anyone enforces — it is arithmetic.
+
+That is what "zero-knowledge" means: the network learns the **result**, and zero **knowledge** about the inputs. Real mathematics, not obfuscation. The network genuinely cannot see the inputs even if it wanted to.
+
+### Why it is called a "circuit"
+
+The name is inherited from how this is built. To make a proof possible, your function is converted into an enormous system of equations — historically drawn as circuits of gates and wires. The proof is essentially *"I know a set of values that satisfies every one of these equations."*
+
+That has one practical consequence worth knowing now:
+
+> **A circuit has a fixed shape.** No loops of unknown length, no arrays of unknown size. Everything must be a known size when the contract is compiled, because the equations have to be written out in advance.
+
+This is also where "block limits are hard limits, not gas costs" comes from. A circuit is either small enough to run or it cannot run at all — there is no paying extra to make it fit.
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 ## Witnesses — the private inputs
 
@@ -155,10 +177,182 @@ So every `disclose()` in the contract is a deliberate decision to make something
 
 ---
 
+<<<<<<< HEAD
 # Part 3 — Why `ownPublicKey()` must never check who is calling
 
 This is the rule that sounds most arbitrary, and it is the most important one.
 
+=======
+---
+
+# Part 3 — The question everyone asks, and the answer that makes it all click
+
+Somebody on the team will ask this within an hour of reading Part 2. It is the
+sharpest question about zero-knowledge, and until you can answer it you do not
+really understand what we are building.
+
+> **"The circuit runs on my own computer. So why can I not just lie to it?"**
+
+Hold that thought — it is about to explain the `ownPublicKey()` rule too.
+
+## 3.1 What a proof actually promises
+
+Here is the whole thing in one sentence, and it is worth reading twice:
+
+> **The proof guarantees the *computation* was honest. It says nothing about whether the *inputs* were honest.**
+
+Two halves, and they are very different:
+
+| | Can you cheat it? |
+|---|---|
+| **The computation** — that the function ran exactly as written, and every `assert` passed | **No.** Change one line, skip one check, and no valid proof exists. The network rejects it |
+| **The inputs** — the numbers you fed in | **Yes, completely.** They come from your machine. You can supply anything |
+
+So a valid proof means *"I ran this function on some inputs and it said yes."*
+It does **not** mean *"the inputs were true."*
+
+Everything below follows from that gap.
+
+## 3.2 Watch it break
+
+Suppose we had written the authentication check the obvious way:
+
+```compact
+assert(ownPublicKey() == employerKey);     // ← BROKEN
+```
+
+I am an attacker. I open the witness implementation on my own laptop — it is my
+code, on my machine — and I make `ownPublicKey()` return `employerKey`.
+
+Now the circuit runs:
+
+```
+ownPublicKey()  →  employerKey
+assert(employerKey == employerKey)  →  ✓ passes
+```
+
+**A completely valid proof is produced.** The network verifies it and accepts it.
+
+And here is the uncomfortable part: **the proof is not lying.** It truthfully
+states *"the value I supplied equals employerKey."* That is a true statement. I
+did supply `employerKey`.
+
+The proof is valid. The mathematics is perfect. **The logic is worthless**,
+because nothing ever stopped me choosing that input.
+
+I can now hire people, approve hours, and act as the company.
+
+## 3.3 Watch it hold
+
+Now the version we actually use:
+
+```compact
+assert(persistentHash([pad(32, "nightshift:pk:"), localSk()]) == employerKey);
+```
+
+I can *still* make `localSk()` return anything I like — that has not changed.
+
+But look at what the circuit does with it. It **hashes it first**, and then
+compares. So to make this assertion pass, I need a secret whose hash comes out
+exactly equal to `employerKey`.
+
+Hashes are one-way. Given `employerKey`, I cannot work backwards to find a
+secret that produces it. I would have to guess, and the search space is
+astronomically large.
+
+**There is no input I can choose that makes this pass** — unless I genuinely
+hold the employer's secret, in which case I *am* the employer.
+
+## 3.4 The actual difference, in one table
+
+| The check | Can I choose an input that passes? |
+|---|---|
+| `ownPublicKey() == employerKey` | **Yes.** Return `employerKey`. Takes ten seconds |
+| `hash(mySecret) == employerKey` | **No.** I would have to reverse a hash |
+
+That is the entire distinction. It has nothing to do with which machine runs the
+code — both run on mine.
+
+> **Security does not come from the computation being trusted.
+> It comes from making it impossible to choose inputs that pass.**
+
+## 3.5 Now apply the question to `confirmPayment`
+
+This is the test of whether the idea has landed. Karim runs `confirmPayment` on
+his own laptop too. Why can he not lie about being paid?
+
+Say the employer sent only 4,000 and Karim wants to pretend that was correct. He
+supplies `rate = 4000` and `amount = 4000`. Look at the payment check:
+
+```compact
+assert(amount == hours * rate);      //  4000 == 1 * 4000   ✓ passes
+```
+
+**It passes.** On its own, that assertion is worthless — he picked both numbers,
+so of course they agree with each other.
+
+But it is not on its own. There is a line above it:
+
+```compact
+assert(persistentCommit(rate, salt) == agreedRate.lookup(myKey()));
+```
+
+The commitment sitting on the chain was built from `(5000, realSalt)` back at
+hiring. For Karim's lie to survive, he would need to find some
+`(4000, someSalt)` pair that hashes to that exact same value.
+
+He cannot. So the transaction fails, and the month stays unconfirmed.
+
+**The commitment is what makes the whole circuit meaningful.** It ties a number
+he chose freely to something that was fixed, published, and made unchangeable
+before he had any reason to lie.
+
+## 3.6 The idea that unifies everything
+
+Here is the sentence to remember, and the one to say in Q&A:
+
+> ### A circuit is only as strong as its anchor to public state.
+
+Every circuit must contain at least one assertion that ties a caller-chosen
+input to something **already on the chain that the caller could not have
+manipulated**. Without such an anchor, a circuit proves nothing — it only proves
+you can do arithmetic on numbers you invented.
+
+Every circuit in our contract has one:
+
+| Circuit | The anchor | Why the caller cannot fake it |
+|---|---|---|
+| `hire` | `employerKey` on the ledger | Would need the employer's secret |
+| `acceptHire` | The commitment stored by `hire` | Would need to reverse a hash |
+| `approveHours` | `employerKey` on the ledger | Would need the employer's secret |
+| `confirmPayment` | The commitment **and** `approvedHours` | Would need to reverse a hash, and the employer wrote the hours |
+| `proveContribution` | The commitment **and** the sealed `contributionRate` | Same, and the rate is `sealed` so it cannot be moved |
+| `endEmployment` | `employerKey` on the ledger | Would need the employer's secret |
+
+## 3.7 The question to ask of every circuit you write
+
+When A writes a circuit — and when anyone reviews one — this is the only
+question that matters:
+
+> **What stops the caller from choosing inputs that make every assertion pass?**
+
+If there is a clear answer ("they would have to reverse a hash", "they would
+need a secret they do not have", "that value was written by someone else"), the
+circuit is sound.
+
+If there is no good answer, **the circuit is decorative.** It will compile, it
+will produce valid proofs, and it will protect nothing at all.
+
+That failure mode is dangerous precisely because it looks like success. The code
+compiles. The tests pass. The proof verifies. And it is worthless.
+
+# Part 4 — Why `ownPublicKey()` must never check who is calling
+
+This is the rule that sounds most arbitrary, and it is the most important one.
+
+*Part 3 explained **why** it fails. This part is the practical version: what to write instead.*
+
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 ## The problem
 
 The contract needs to know who is calling. Only the employer may hire. Only Karim may confirm Karim's payments.
@@ -203,7 +397,11 @@ Two bonuses:
 
 ---
 
+<<<<<<< HEAD
 # Part 4 — Why each circuit exists
+=======
+# Part 5 — Why each circuit exists
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 Six circuits. Each solves one specific problem. Here is the problem first, then the circuit.
 
@@ -336,7 +534,11 @@ Nothing is deleted. His last confirmed month becomes his leaving date, and the w
 
 ---
 
+<<<<<<< HEAD
 # Part 5 — The whole contract in one picture
+=======
+# Part 6 — The whole contract in one picture
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 ```
    PUBLIC BOARD (anyone on earth can read this)
@@ -370,12 +572,20 @@ Nothing is deleted. His last confirmed month becomes his leaving date, and the w
 
 ---
 
+<<<<<<< HEAD
 # Part 6 — What A actually does with all this
+=======
+# Part 7 — What A actually does with all this
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 
 Now the job makes sense:
 
 1. **Write the six circuits**, one at a time, compiling after each with `--skip-zk`.
 2. **Test that the failures fail** — a wrong salt, a wrong rate, a wrong amount. The *rejections* are the product. Test them first.
+<<<<<<< HEAD
+=======
+2b. **Ask the anchor question of every circuit before moving on**: *what stops the caller choosing inputs that make every assertion pass?* If there is no clear answer, the circuit is decorative — see [Part 3](#part-3--the-question-everyone-asks-and-the-answer-that-makes-it-all-click).
+>>>>>>> 5c9baf465ec36e5f45a7e0d24dcdcc8a2cba1716
 3. **Compile for real once** (no `--skip-zk`) and commit `managed/`, so C, D and E can use the contract without installing anything.
 4. **Be able to explain the above out loud.**
 
