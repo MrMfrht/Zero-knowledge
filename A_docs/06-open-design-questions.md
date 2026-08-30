@@ -108,16 +108,19 @@ confirm payments, but nothing new can happen, forever.
 
 ---
 
-## 🟠 5. Secrets are stored on one device with no recovery — OPEN
+## 🟠 5. Secrets are stored on one device with no recovery — INTERIM DECISION
 
 Covered in full in [05-keys-storage-and-identity.md](05-keys-storage-and-identity.md).
 
-**Short version:** lose the device and you lose the identity and every salt. Money
-is unaffected; the ability to prove anything is not.
+**Decided for now:** plain local storage, as reflected by `witnesses.ts` — which
+is deliberately storage-agnostic, so this can be upgraded without touching the
+contract. Lose the device and you lose the identity and every salt; money is
+unaffected, the ability to prove anything is not.
 
-**The unexplored fix:** derive `localSk` from the wallet seed phrase, which people
-already back up. **Nobody has checked whether Midnight's DApp Connector allows
-this.** Question for B.
+**Still open:** the upgrade itself. Encrypted local state
+(`level-private-state-provider`) is the easy step; deriving `localSk` from the
+wallet seed phrase would solve recovery for free, but **nobody has checked
+whether Midnight's DApp Connector allows it.** Question for B.
 
 ---
 

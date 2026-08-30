@@ -27,29 +27,32 @@ the [ZK Loan example](https://docs.midnight.network/examples/dapps/zkloan) uses.
 Better. Still not perfect: once unlocked, the decrypted key sits in memory for as
 long as the app is open.
 
-## The design decision we have not made
+## The decision, as made — local storage for now
 
-Right now `localSk` is **a random secret our app invents and stores**. There is a
-better option we have not evaluated:
+**DECIDED (for the hackathon):** the secret is 32 random bytes, generated once
+by the app and kept in local storage on the device. This is what
+[`packages/contract/src/witnesses.ts`](../packages/contract/src/witnesses.ts)
+reflects: `localSk` reads `privateState.secretKey` from whatever private state
+the caller supplies — it does not know or care where that state was stored.
 
-| | Where the secret comes from | Trade-off |
+That indifference is the important design property. **`witnesses.ts` is
+storage-agnostic**, so upgrading storage later means changing where the private
+state is loaded from, in one place in the api package — the contract, the
+circuits, and `witnesses.ts` itself all stay untouched.
+
+The upgrade path, in order:
+
+| Stage | Where the secret lives | Status |
 |---|---|---|
-| **What we have** | The app generates 32 random bytes and stores them | Simple. **Lose the device, lose the identity** |
-| **Possibly better** | Derive it from the wallet's seed phrase | The wallet is already the custodian, and a seed phrase is already backed up |
-
-Deriving from the wallet would largely solve recovery for free — people already
-write down seed phrases.
-
-**Whether Midnight's DApp Connector exposes a way to derive an app-specific
-secret from the wallet, we do not know.** That is an open question for B, and it
-should be asked before anything is hardened. It is tracked in
-[06-open-design-questions.md](06-open-design-questions.md).
+| **Now** | Local storage, via the private state handed to `witnesses.ts` | ✅ Decided, working (see the smoke run in the contract README) |
+| Next | `@midnight-ntwrk/midnight-js-level-private-state-provider` — encrypted at rest, 16+ character password, the [ZK Loan example](https://docs.midnight.network/examples/dapps/zkloan)'s pattern | The straightforward hardening step |
+| Later | Derive `localSk` from the wallet's seed phrase | Solves recovery for free — a seed phrase is already backed up. **Whether the DApp Connector allows this is unverified** — open question for B, tracked in [06](06-open-design-questions.md) |
 
 ## What to say about it
 
-For the demo: encrypted local state, we state plainly that losing the device
-costs the identity, and we name wallet-derived keys as the next step. A named
-limitation is a strength; a discovered one is a hole.
+For the demo: local storage, stated plainly — losing the device costs the
+identity, encrypted state is the next step, wallet-derived keys the one after.
+A named limitation is a strength; a discovered one is a hole.
 
 ---
 
