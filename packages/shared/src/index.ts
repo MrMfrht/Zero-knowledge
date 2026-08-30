@@ -170,3 +170,12 @@ export function nextPeriod(period: Period): Period {
 export function comparePeriods(a: Period, b: Period): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
+
+// ---------------------------------------------------------------------------
+// Design Tokens (for styling)
+// ---------------------------------------------------------------------------
+
+export { designTokens } from './design-tokens';
+export type { DesignTokens } from './design-tokens';
+
+// CSS: import '@nightshift/shared/globals.css' in each app's main.tsx
