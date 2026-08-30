@@ -26,7 +26,7 @@ can use the contract without installing the Compact toolchain.
 
 | Circuit | Status | What it does |
 |---|---|---|
-| `hire` | ✅ compiles | Employer seals a worker's agreed rate |
+| `hire` | ✅ compiles | Employer seals a worker's agreed rate — **[documented](CIRCUIT-1-HIRE.md)** |
 | `acceptHire` | not yet | Worker verifies the seal matches what they were told |
 | `approveHours` | not yet | Employer approves a timesheet |
 | `confirmPayment` | not yet | Worker proves the payment matched the sealed rate |
@@ -35,5 +35,6 @@ can use the contract without installing the Compact toolchain.
 
 ## Read first
 
+- **[CIRCUIT-1-HIRE.md](CIRCUIT-1-HIRE.md) — what every file in this folder is, how Compact and TypeScript connect, and the whole hiring flow step by step. Start here if the folder looks confusing.**
 - [tasks/01-contract-EXPLAINED.md](../../tasks/01-contract-EXPLAINED.md) — why any of this works
 - [SPIKE-ARITHMETIC.md](SPIKE-ARITHMETIC.md) — Compact has no division operator

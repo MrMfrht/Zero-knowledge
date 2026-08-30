@@ -7,6 +7,8 @@
 
 > ### 👉 New to blockchain? Read [01-contract-EXPLAINED.md](01-contract-EXPLAINED.md) first.
 >
+> And once `hire` compiles, **[CIRCUIT-1-HIRE.md](../packages/contract/CIRCUIT-1-HIRE.md)** walks through every generated file, how Compact and TypeScript connect, and the full hiring flow in code.
+>
 > It explains — assuming zero prior knowledge — what a salt is, what a commitment
 > is, why a `Map` publishes your salary to the world, why `ownPublicKey()` cannot
 > check who is calling, and **why each of the six circuits exists**.
