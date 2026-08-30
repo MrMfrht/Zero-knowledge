@@ -15,12 +15,17 @@
  * skill §8, "Failed to clone intent" workaround included since that bug is
  * confirmed real against this exact SDK generation.
  *
- * ⚠️ Not yet run end-to-end: it needs `compact:full` proving keys (the
- * committed build is `--skip-zk` — see contract.ts), which the contract
- * README says land before integration. Everything here type-checks against
- * the verified provider/contract shapes in `contract.ts` and `providers.ts`;
- * running it for real is the next step once those keys exist.
+ * The `compact:full` proving keys this needs are committed as of 2026-08-30
+ * (`packages/contract/src/managed/keys/`, ~3-5 MB per circuit — if you see
+ * kilobyte-sized files there, someone has committed a `--skip-zk` build over
+ * them and no proof will generate).
+ *
+ * ⚠️ A full deploy has still not succeeded end-to-end. Four real bugs were
+ * found and fixed by running it (see the comments below, each citing what it
+ * actually failed with); the open one is the `availableCoins`/`balances`
+ * mismatch documented at the DUST registration step.
  */
+import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 // Must happen before any wallet-sdk import triggers a GraphQL subscription —
 // Node has no global WebSocket, but wallet sync needs one (skill §5).
@@ -44,7 +49,7 @@ import type { UnboundTransaction, WalletProvider, MidnightProvider } from '@midn
 // protocol-family versions of these three is what caused the errors this
 // comment replaces. Only the transaction object itself is round-tripped
 // between families, via `.serialize()`/`.deserialize(...)` below.
-import { DustSecretKey, Intent, Transaction as WalletTransaction, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
+import { DustSecretKey, Intent, LedgerParameters, Transaction as WalletTransaction, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
 import type { Signature } from '@midnight-ntwrk/ledger-v8';
 import { FluentWalletBuilder } from '@midnight-ntwrk/testkit-js';
 import {
@@ -62,6 +67,7 @@ interface DeployArgs {
   indexerUri: string;
   indexerWsUri: string;
   nodeUri: string;
+  nodeWsUri: string;
   proofServerUri: string;
   zkConfigPath: string;
 }
@@ -79,9 +85,19 @@ function parseArgs(argv: string[]): DeployArgs {
     networkId,
     indexerUri: get('--indexer', endpoints.http)!,
     indexerWsUri: get('--indexer-ws', endpoints.ws)!,
-    nodeUri: get('--node', 'ws://localhost:9944')!,
+    nodeUri: get('--node', 'http://127.0.0.1:9944')!,
+    nodeWsUri: get('--node-ws', 'ws://127.0.0.1:9944')!,
     proofServerUri: get('--proof-server', 'http://127.0.0.1:6300')!,
-    zkConfigPath: get('--zk-path', new URL('../../../contract/src/managed/contract', import.meta.url).pathname)!,
+    // The base path must directly contain keys/ and zkir/ (siblings of
+    // contract/, compiler/) — confirmed against
+    // node_modules/@midnight-ntwrk/midnight-js-node-zk-config-provider's own
+    // test fixtures, after a first attempt pointed one level too deep, into
+    // managed/contract/, and failed with "Failed to read verifier key".
+    //
+    // `fileURLToPath`, not `.pathname`: on Windows the latter yields
+    // "/C:/Users/..." — a leading slash `fs` cannot open. Half this team is
+    // on Windows, so this is a real portability fix, not pedantry.
+    zkConfigPath: get('--zk-path', fileURLToPath(new URL('../../../contract/src/managed', import.meta.url)))!,
   };
 }
 
@@ -127,20 +143,105 @@ async function main(): Promise<void> {
   const shieldedSecretKeys = ZswapSecretKeys.fromSeed(Buffer.from(args.seedHex, 'hex'));
   const dustSecretKey = DustSecretKey.fromSeed(Buffer.from(args.seedHex, 'hex'));
 
+  // EnvironmentConfiguration's exact required shape (confirmed against
+  // node_modules/@midnight-ntwrk/testkit-js/dist/test-environment/
+  // environment-configuration.d.ts, not guessed — the first attempt here
+  // passed only indexer/indexerWS/node/proofServer and failed with
+  // "Invalid URL: undefined" because walletNetworkId, networkId and nodeWS
+  // are also required, not optional).
   const { wallet, seeds, keystore } = await FluentWalletBuilder.forEnvironment({
+    walletNetworkId: args.networkId,
+    networkId: args.networkId,
     indexer: args.indexerUri,
     indexerWS: args.indexerWsUri,
     node: args.nodeUri,
+    nodeWS: args.nodeWsUri,
     proofServer: args.proofServerUri,
+    faucet: undefined,
   })
+    // Without this, FluentWalletBuilder defaults additionalFeeOverhead to 0,
+    // which fails "could not balance dust" on a real deploy transaction even
+    // against a wallet with an enormous DUST balance — this parameter tunes
+    // the fee-estimation margin, not how much DUST is available. Values match
+    // the verified-working ~/nightshift/midnight-local-dev/src/wallet.ts.
+    .withDustOptions({
+      ledgerParams: LedgerParameters.initialParameters(),
+      additionalFeeOverhead: 1_000n,
+      feeBlocksMargin: 5,
+    })
     .withSeed(args.seedHex)
     .buildWithoutStarting();
   void seeds;
   await wallet.start(shieldedSecretKeys, dustSecretKey);
 
   console.log('Waiting for wallet to sync...');
-  const state = await Rx.firstValueFrom(wallet.state().pipe(Rx.filter((s) => s.isSynced)));
+  let state = await Rx.firstValueFrom(wallet.state().pipe(Rx.filter((s) => s.isSynced)));
   console.log(`Deployer unshielded address: ${keystore.getBech32Address().asString()}`);
+
+  // DUST accrues from NIGHT only after the NIGHT UTXO is explicitly
+  // registered for generation (midnight-js skill §6) — this is a real,
+  // required bootstrapping step, not a fee-parameter tuning issue. A first
+  // attempt at this script skipped it entirely and failed with "could not
+  // balance dust" even on a wallet holding real NIGHT. Pattern verified
+  // working against this exact devnet in
+  // `~/nightshift/midnight-local-dev/src/wallet.ts` (`registerNightForDust`).
+  //
+  // ⚠️ UNRESOLVED as of this writing: a live run against a genuinely fresh
+  // local devnet (confirmed via `docker logs midnight-node` that blocks were
+  // being produced continuously, ruling out a stalled chain) still left
+  // `state.unshielded.availableCoins` reporting zero entries immediately
+  // after `isSynced` went true, despite `state.unshielded.balances` showing
+  // a real, nonzero NIGHT balance for the deployer address. That mismatch —
+  // a nonzero balance with no enumerable coins to register — was not
+  // resolved before time ran out on this investigation; the next step is
+  // logging `state.unshielded.availableCoins` itself (not just its length)
+  // right after sync to see whether coins appear a few seconds later, or
+  // whether balances and availableCoins are populated by genuinely separate
+  // sync phases that this script isn't waiting for correctly.
+  if (state.dust.availableCoins.length === 0) {
+    console.log(
+      `No spendable DUST yet. Unshielded coins visible: ${state.unshielded.availableCoins.length}` +
+        ` (balance: ${JSON.stringify(state.unshielded.balances, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))})`,
+    );
+    const unregistered = state.unshielded.availableCoins.filter(
+      (coin) => coin.meta.registeredForDustGeneration === false,
+    );
+    if (unregistered.length > 0) {
+      console.log(`Registering ${unregistered.length} NIGHT UTXO(s) for DUST generation...`);
+      const recipe = await wallet.registerNightUtxosForDustGeneration(
+        unregistered,
+        keystore.getPublicKey(),
+        (payload) => keystore.signData(payload),
+      );
+      const finalized = await wallet.finalizeRecipe(recipe);
+      const regTxId = await wallet.submitTransaction(finalized);
+      console.log(`DUST registration submitted: ${regTxId}`);
+    } else if (state.unshielded.availableCoins.length === 0) {
+      console.log(
+        'No unshielded coins are enumerable yet even though a balance is visible — ' +
+          'see the UNRESOLVED note above. Waiting in case this resolves with more sync time.',
+      );
+    } else {
+      console.log('All visible NIGHT UTXOs are already registered for DUST generation.');
+    }
+    console.log('Waiting for a spendable DUST coin (this can take a few minutes)...');
+    state = await Rx.firstValueFrom(
+      wallet.state().pipe(
+        Rx.throttleTime(5_000),
+        Rx.tap((s) =>
+          console.log(
+            `  DUST balance: ${s.dust.balance(new Date())}, spendable coins: ${s.dust.availableCoins.length}, unshielded coins: ${s.unshielded.availableCoins.length}`,
+          ),
+        ),
+        Rx.filter((s) => s.dust.availableCoins.length >= 1),
+        Rx.timeout({
+          each: 180_000,
+          with: () => Rx.throwError(() => new Error('No spendable DUST coin appeared within 180s')),
+        }),
+      ),
+    );
+  }
+  console.log(`DUST ready: balance=${state.dust.balance(new Date())}, spendable coins=${state.dust.availableCoins.length}`);
 
   // `midnight-js-contracts` and `wallet-sdk`/`testkit-js` resolve two
   // structurally-identical but nominally distinct copies of `ledger-v8`
@@ -223,20 +324,33 @@ async function main(): Promise<void> {
   const deployment = crypto.getRandomValues(new Uint8Array(32));
 
   console.log(`Deploying with contributionPct=${args.contributionPct}...`);
-  const deployed = await deployContract(providers, {
-    compiledContract: compiledPayrollContract,
-    args: [args.contributionPct, deployment],
-    privateStateId: PAYROLL_PRIVATE_STATE_ID,
-    initialPrivateState: createPayrollPrivateState(deployerSecret),
-  } as never);
+  try {
+    const deployed = await deployContract(providers, {
+      compiledContract: compiledPayrollContract,
+      args: [args.contributionPct, deployment],
+      privateStateId: PAYROLL_PRIVATE_STATE_ID,
+      initialPrivateState: createPayrollPrivateState(deployerSecret),
+    } as never);
 
-  console.log('Deployed. Contract address:');
-  console.log(deployed.deployTxData.public.contractAddress);
-
-  await wallet.stop();
+    console.log('Deployed. Contract address:');
+    console.log(deployed.deployTxData.public.contractAddress);
+  } finally {
+    // Without this in a `finally`, a failed deploy leaves the wallet's
+    // WebSocket subscriptions open and the process never exits on its own —
+    // confirmed live: a failed run sat at 100% CPU for minutes after
+    // printing its error, needing a manual `pkill` to end it.
+    await wallet.stop();
+  }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    // Belt-and-braces: even with wallet.stop() above, some transport handles
+    // (indexer WS subscriptions in particular) have been observed to keep
+    // the event loop alive. Same live-run evidence as the comment above.
+    process.exit(process.exitCode ?? 0);
+  });
