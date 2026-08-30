@@ -39,6 +39,13 @@ const WALLET_DECLINED =
   'The wallet extension declined the request. Approve it in the wallet popup, then try again.';
 
 export function explainPayrollFailure(error: unknown): FailureExplanation {
+  // The returned message is deliberately free of stack traces and SDK
+  // vocabulary, which is right for the person and useless for debugging a
+  // chain rejection. The raw error goes to the console so both audiences are
+  // served -- a rejected transaction's real cause (a Substrate `Custom error:
+  // N`, a proof failure) is otherwise lost entirely.
+  console.error('[NightShift] raw failure:', error);
+
   if (error instanceof PayrollError) {
     return { message: error.message, isWalletProblem: false };
   }

@@ -10,7 +10,7 @@ interface ApproveHoursProps {
 }
 
 export const ApproveHours: React.FC<ApproveHoursProps> = ({ api, initialWorkerKey, onSuccess }) => {
-  const [workerKey, setWorkerKey] = useState(initialWorkerKey || '0x7f3a99281b4c6d8e0f1a2b3c4d5e6f7a8b9c0d1e');
+  const [workerKey, setWorkerKey] = useState(initialWorkerKey || '');
   const [period, setPeriod] = useState('2026-04');
   const [hoursInput, setHoursInput] = useState('47');
   const [loading, setLoading] = useState(false);

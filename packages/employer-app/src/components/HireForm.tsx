@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserPlus, AlertTriangle, Lock, Copy, Check, Sparkles, Shield, KeyRound, ExternalLink } from 'lucide-react';
 import type { PayrollApi, Offer } from '@nightshift/api';
 import { explainPayrollFailure } from '../explainPayrollFailure';
+import { assertWorkerKey, withTimeout } from '../withTimeout';
 
 interface HireFormProps {
   api: PayrollApi;
@@ -9,7 +10,7 @@ interface HireFormProps {
 }
 
 export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
-  const [workerKey, setWorkerKey] = useState('0x4a8c9e71b2d3f45a67890123456789abcdef0123');
+  const [workerKey, setWorkerKey] = useState('');
   const [payType, setPayType] = useState<'salaried' | 'hourly'>('salaried');
   const [salaryInput, setSalaryInput] = useState('5000');
   const [expectedHoursInput, setExpectedHoursInput] = useState('1');
@@ -34,13 +35,21 @@ export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
         throw new Error('Expected hours must be at least 1.');
       }
 
+      // Checked before setLoading, so a malformed key costs nothing. Proving
+      // takes seconds and a wallet signature; neither should be spent on a
+      // value that cannot be a worker key.
+      const checkedWorkerKey = assertWorkerKey(workerKey);
+
       setLoading(true);
 
-      const offer = await api.hire({
-        workerKey: workerKey.trim(),
-        ratePerPeriod: parsedRate,
-        expectedHours: parsedHours,
-      });
+      const offer = await withTimeout(
+        'Sealing the offer',
+        api.hire({
+          workerKey: checkedWorkerKey,
+          ratePerPeriod: parsedRate,
+          expectedHours: parsedHours,
+        }),
+      );
 
       setCreatedOffer(offer);
       onSuccess();
