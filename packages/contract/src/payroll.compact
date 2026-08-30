@@ -35,6 +35,15 @@ export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
 /// salaried and fixed-price work.
 export ledger approvedHours: Map<Bytes<32>, Uint<32>>;
 
+/// H(workerKey, period) -> was this period paid correctly?
+///
+/// The entire public output of the product. One boolean per worker per period.
+/// Present and true means the worker proved, in zero knowledge, that the money
+/// they received equalled hours x their sealed rate. Absent means they did not.
+///
+/// No amount appears here, or anywhere else on this ledger.
+export ledger paidFor: Map<Bytes<32>, Boolean>;
+
 /// workerKey -> is this person currently employed?
 ///
 /// Three states, deliberately:
@@ -147,4 +156,52 @@ export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>
     assert(active.lookup(w), "this worker's employment has ended");
 
     approvedHours.insert(disclose(periodKey(w, period)), disclose(hours));
+}
+
+/// The worker proves the money that arrived was exactly what was agreed.
+///
+/// THIS IS THE PRODUCT. Everything else exists to make this circuit possible.
+///
+/// Runs on the WORKER's machine, with the WORKER's secret. Three private
+/// numbers go in — the rate, the salt and the amount received — and exactly one
+/// public fact comes out: this period was paid correctly. None of the three
+/// ever reaches the ledger.
+///
+/// Note what is NOT an argument: `hours`. It is read from the ledger, where the
+/// employer put it. The worker cannot claim to have worked more hours than were
+/// approved, because they never get to supply that number at all.
+///
+/// The failure case is the demo. If the employer sent 4000 when 5000 was
+/// agreed, the last assertion fails, no proof can be produced, and the period
+/// stays permanently unconfirmed on a public ledger — while the salary itself
+/// stays unreadable to everyone on earth.
+export circuit confirmPayment(
+    period: Uint<32>,
+    rate: Uint<64>,
+    salt: Bytes<32>,
+    amountReceived: Uint<64>
+): [] {
+    const k = disclose(dappKey(localSk()));
+    assert(active.member(k), "you have not accepted an offer");
+    assert(active.lookup(k), "your employment has ended");
+
+    const pk = disclose(periodKey(k, period));
+    assert(approvedHours.member(pk), "the employer has not approved hours for this period yet");
+    assert(!paidFor.member(pk), "this period is already confirmed");
+
+    // Anchor 1: this really is the rate sealed at hiring. Without this the
+    // check below would be worthless — the worker picks both numbers, so of
+    // course they would agree with each other.
+    assert(persistentCommit<Uint<64>>(rate, salt) == agreedRate.lookup(k),
+           "that is not your agreed rate");
+
+    // Anchor 2: the hours the EMPLOYER approved, not any the worker supplied.
+    const hours = approvedHours.lookup(pk);
+
+    // The check the whole product is built on. Comparing a product is safe —
+    // Compact widens it rather than wrapping, so there is no overflow to
+    // exploit. Storing it would be a compile error. See A_docs/04.
+    assert(amountReceived == (hours as Uint<64>) * rate, "incorrect payment");
+
+    paidFor.insert(pk, true);
 }
