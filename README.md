@@ -12,9 +12,9 @@ NightShift is a payroll application built on the [Midnight Network](https://docs
 
 | Member | Area |
 |---|---|
-| **Moussa Farhat** | Lead · Smart contract (Compact) · Chain integration |
+| **Moussa Farhat** | Smart contract (Compact) · Chain integration |
 | **Soham Kadu** | Frontend applications |
-| **Larry D. Ross** | Backend services |
+| **Larry D. Ross** | Backend services · Chain integration |
 | **Rudra Kumar** | Frontend · Auditor experience |
 | **Harsh** | Backend |
 
