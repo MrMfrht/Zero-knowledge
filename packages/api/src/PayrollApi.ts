@@ -6,6 +6,34 @@ import type {
   WorkerKey,
   WorkerSummary,
 } from '@nightshift/shared';
+import type { PayrollError } from './errors.js';
+
+// ---------------------------------------------------------------------------
+// Wallet & transaction lifecycle
+// ---------------------------------------------------------------------------
+
+/** Wallet connection state, safe for UI code — never a key, salt, or secret. */
+export type WalletStatus =
+  | { readonly connected: false }
+  | { readonly connected: true; readonly address: string };
+
+/**
+ * Mid-flight progress for a transaction that touches the chain. UI code
+ * renders these stages directly; nothing here ever carries an SDK object, a
+ * salt, or a secret key — that is the entire point of this type existing
+ * instead of the app reaching into `@midnight-ntwrk/*` itself.
+ */
+export type TransactionStatus =
+  | { readonly stage: 'signing' | 'proving' | 'submitting' | 'pending' }
+  | { readonly stage: 'confirmed'; readonly txId?: string }
+  | { readonly stage: 'failed'; readonly error: PayrollError };
+
+/**
+ * Reports transaction progress as it happens. Optional on every method that
+ * accepts it — omit it to just `await` the final result, the way every
+ * method here worked before this existed.
+ */
+export type OnTransactionStatus = (status: TransactionStatus) => void;
 
 /**
  * Everything the three apps can do.
@@ -35,6 +63,46 @@ export interface PayrollApi {
   getMyKey(): Promise<WorkerKey>;
 
   // -------------------------------------------------------------------------
+  // Wallet  (used by C and D — anything that signs a transaction)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Connect the browser wallet extension (Lace, 1AM, etc.).
+   *
+   * Required before calling anything that submits a transaction — `hire`,
+   * `approveHours`, `payWorker`. Reading methods (`listWorkers`,
+   * `getEmploymentRecord`, ...) never need a wallet.
+   */
+  connectWallet(): Promise<WalletStatus>;
+
+  disconnectWallet(): Promise<void>;
+
+  /** Current wallet state, so the UI can react without holding its own copy. */
+  getWalletStatus(): Promise<WalletStatus>;
+
+  /**
+   * Send a private payment, wallet to wallet.
+   *
+   * This does not touch the contract at all — it is a plain shielded
+   * transfer. `confirmPayment` is the separate, later step the worker takes
+   * once the payment has arrived, and is the only place the amount is
+   * checked against the sealed rate.
+   *
+   * Requires a connected wallet. Throws if none is connected.
+   *
+   * `txId` is OPTIONAL and will often be absent. The browser wallet's
+   * `submitTransaction` resolves to `void`, so on the real implementation there
+   * is currently no reliable transaction id to return — see the investigation in
+   * `src/midnight/payment.ts`. The mock returns one; do not build UI that
+   * depends on receiving it.
+   */
+  payWorker(params: {
+    workerKey: WorkerKey;
+    amount: Amount;
+    onStatus?: OnTransactionStatus;
+  }): Promise<{ txId?: string }>;
+
+  // -------------------------------------------------------------------------
   // Employer  (used by D)
   // -------------------------------------------------------------------------
 
@@ -51,11 +119,15 @@ export interface PayrollApi {
    *
    * @param ratePerPeriod For hourly workers this is the rate for ONE hour.
    * @param expectedHours `1` for salaried and fixed-price work.
+   * @param onStatus Optional. Reports signing/proving/submitting/pending as
+   *   they happen; the returned `Offer` is only what a successful `hire`
+   *   ever resolved to, so existing callers that omit this see no change.
    */
   hire(params: {
     workerKey: WorkerKey;
     ratePerPeriod: Amount;
     expectedHours: number;
+    onStatus?: OnTransactionStatus;
   }): Promise<Offer>;
 
   /**
@@ -65,11 +137,14 @@ export interface PayrollApi {
    * only the rate is sensitive. Pass `1` for salaried workers.
    *
    * The worker cannot confirm a period until its hours are approved.
+   *
+   * @param onStatus Optional. Same lifecycle reporting as `hire`.
    */
   approveHours(params: {
     workerKey: WorkerKey;
     period: Period;
     hours: number;
+    onStatus?: OnTransactionStatus;
   }): Promise<void>;
 
   /**
