@@ -127,8 +127,10 @@ answer than a mock that pretends to more than it does.
 
 # Both answers in one line
 
-**Storage:** encrypted local state, and losing the device costs the identity.
-Wallet-derived keys are the fix and are unexplored.
+**Storage:** local storage for now, by decision — `witnesses.ts` is
+storage-agnostic, so the upgrade (encrypted state, then wallet-derived keys)
+touches one place in the api and never the contract. Losing the device costs
+the identity.
 
 **Identity:** the contract proves *the same person*, not *which person*. The
 human check happens once, at interview, and everything after that is anchored to

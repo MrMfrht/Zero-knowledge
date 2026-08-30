@@ -182,10 +182,12 @@ Fixing question 3 fixes this too — both need block-time deadlines.
 
 ---
 
-## 🟢 11. Nobody has decided where `witnesses.ts` lives — OPEN
+## 🟢 11. Where `witnesses.ts` lives — DECIDED
 
-The file that supplies `localSk` does not exist. The contract cannot run without
-it. `packages/contract` or `packages/api` — a decision to make with B.
+**Written and proven.** It lives in `packages/contract/src/witnesses.ts`, where
+CLAUDE.md's layout and the official zkloan example both place it. Storage-agnostic
+by design — it reads whatever private state the caller supplies. Verified by the
+smoke run in the contract README: deploy, hire as employer, stranger rejected.
 
 Tracked so it does not get silently skipped.
 
