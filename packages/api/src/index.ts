@@ -36,8 +36,8 @@ export {
 } from './mock/MockPayrollApi.js';
 export type { MockPayrollApiOptions } from './mock/MockPayrollApi.js';
 
-// The real implementation lands here when B finishes it:
-// export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
+export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
+export type { MidnightPayrollApiOptions } from './midnight/MidnightPayrollApi.js';
 
 // Re-exported so apps need only one import for the common types.
 export type {

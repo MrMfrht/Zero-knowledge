@@ -1,0 +1,34 @@
+/**
+ * Step 0 of `tasks/THE-FLOW.md`: "the first time anyone opens app C or app D,
+ * the api silently generates 32 random bytes ... and stores it in that
+ * browser's local storage."
+ *
+ * This is the ONE secret this whole product depends on never leaving the
+ * device. It is read here and handed to the contract's `localSk()` witness
+ * (see `witnesses.ts`) — never logged, never sent anywhere, never returned
+ * from any method on this class.
+ */
+
+const STORAGE_KEY = 'nightshift:localSk';
+
+function randomSecret(): Uint8Array {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+/**
+ * Returns this browser's 32-byte secret, generating and persisting one the
+ * first time it's asked for. Stored as hex in `localStorage` — plain
+ * `localStorage`, not encrypted, matching the storage decision recorded in
+ * `A_docs/05-keys-storage-and-identity.md` for this hackathon's timeline.
+ */
+export function getOrCreateLocalSecret(storage: Storage = window.localStorage): Uint8Array {
+  const existing = storage.getItem(STORAGE_KEY);
+  if (existing) {
+    return new Uint8Array(Buffer.from(existing, 'hex'));
+  }
+  const secret = randomSecret();
+  storage.setItem(STORAGE_KEY, Buffer.from(secret).toString('hex'));
+  return secret;
+}

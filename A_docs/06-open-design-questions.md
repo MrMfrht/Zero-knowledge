@@ -122,6 +122,32 @@ unaffected, the ability to prove anything is not.
 wallet seed phrase would solve recovery for free, but **nobody has checked
 whether Midnight's DApp Connector allows it.** Question for B.
 
+**Answered by B — no.** Checked against the actual installed
+`@midnight-ntwrk/dapp-connector-api@4.0.1` type declarations (not
+documentation prose, the real `.d.ts` this app depends on:
+`node_modules/@midnight-ntwrk/dapp-connector-api/dist/api.d.ts`), not from
+memory. `WalletConnectedAPI` — the full surface a connected wallet exposes —
+has exactly these methods: balance/address/history reads
+(`getShieldedBalances`, `getUnshieldedBalances`, `getDustBalance`,
+`getShieldedAddresses`, `getUnshieldedAddress`, `getDustAddress`,
+`getTxHistory`), transaction building/signing/submission
+(`balanceUnsealedTransaction`, `balanceSealedTransaction`, `makeTransfer`,
+`makeIntent`, `signData`, `submitTransaction`), and service plumbing
+(`getProvingProvider`, `getConfiguration`, `getConnectionStatus`). None of
+them returns a seed, a mnemonic, an HD-derivation path, or any raw secret
+key material — not even `signData`, which signs an opaque payload with the
+wallet's unshielded key and returns only `{ data, signature, verifyingKey }`.
+This is by design: exposing key material to a DApp is exactly what the
+DApp Connector API exists to prevent, the same reason `localSk` is a
+witness in the first place.
+
+**So the recovery upgrade is `level-private-state-provider` (encrypted local
+state) alone, not wallet-derived recovery** — there is no lower-effort path
+via the wallet. If wallet-derived recovery is still wanted, the only route
+is a *second*, independent secret the person manages themselves (e.g. a
+recovery phrase this app generates and asks them to write down), not
+anything the connected wallet can hand over.
+
 ---
 
 ## 🟡 6. The backend directory can deanonymize the whole chain — DECIDED
