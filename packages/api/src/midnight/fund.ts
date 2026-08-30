@@ -32,6 +32,15 @@ import { INDEXER_ENDPOINTS, type NetworkId } from './network.js';
 /** The dev preset's pre-mined genesis master wallet. Public by design. */
 const GENESIS_SEED_HEX = '0000000000000000000000000000000000000000000000000000000000000001';
 
+/**
+ * NIGHT is quoted to six decimal places on the wire, so one NIGHT is
+ * 1_000_000 base units. Passing 50_000 raw buys 0.05 NIGHT, which looks like
+ * a successful transfer and then generates DUST too slowly to ever pay for a
+ * transaction -- a failure that shows up ten minutes later as an empty tank.
+ * `--amount` is therefore in whole NIGHT and multiplied here.
+ */
+const BASE_UNITS_PER_NIGHT = 1_000_000n;
+
 /** Matches what `midnight-local-dev` hands each account. */
 const DEFAULT_AMOUNT_NIGHT = 50_000n;
 
@@ -44,7 +53,7 @@ function parseArgs(argv: string[]) {
   const endpoints = INDEXER_ENDPOINTS[networkId];
   return {
     to: get('--to'),
-    amount: BigInt(get('--amount', String(DEFAULT_AMOUNT_NIGHT))!),
+    amountNight: BigInt(get('--amount', String(DEFAULT_AMOUNT_NIGHT))!),
     networkId,
     seedHex: get('--seed', GENESIS_SEED_HEX)!,
     indexerUri: get('--indexer', endpoints.http)!,
@@ -76,7 +85,7 @@ async function main(): Promise<void> {
   const receiverAddress = MidnightBech32m.parse(args.to).decode(UnshieldedAddress, args.networkId);
 
   console.log(`Funding ${args.to}`);
-  console.log(`  amount:  ${args.amount} NIGHT`);
+  console.log(`  amount:  ${args.amountNight} NIGHT (${args.amountNight * BASE_UNITS_PER_NIGHT} base units)`);
   console.log(`  network: ${args.networkId}`);
 
   const genesis = await createHeadlessWallet({
@@ -94,7 +103,13 @@ async function main(): Promise<void> {
       [
         {
           type: 'unshielded',
-          outputs: [{ type: unshieldedToken().raw, receiverAddress, amount: args.amount }],
+          outputs: [
+            {
+              type: unshieldedToken().raw,
+              receiverAddress,
+              amount: args.amountNight * BASE_UNITS_PER_NIGHT,
+            },
+          ],
         },
       ],
       genesis.secretKeys,
