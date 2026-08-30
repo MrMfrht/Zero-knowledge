@@ -9,6 +9,7 @@ import {
   OfferMismatchError,
   PaymentMismatchError,
   ContributionMismatchError,
+  PayrollError,
 } from '@nightshift/api';
 import type { PayrollApi } from '@nightshift/api';
 import type {
@@ -87,10 +88,38 @@ function isWalletUnavailable(err: unknown): boolean {
   return err.name === 'NoWalletFoundError' || /no wallet (found|connected)/i.test(err.message);
 }
 
+const WALLET_REFUSED_MESSAGE =
+  'The wallet did not approve this. Its approval window is a separate OS window and usually ' +
+  'opens behind a maximised browser — un-maximise the browser or check the taskbar, then try ' +
+  'again. Nothing reached the chain and no fees were spent.';
+
+/**
+ * Whether the wallet refused, rather than the circuit failing.
+ *
+ * Every wallet words this differently and none of them types it, so a regex
+ * on the message is the only check available. Lace reports an approval window
+ * that was closed, ignored or timed out as "Authentication cancelled by
+ * user"; midnight-js then wraps that in "Unexpected error submitting scoped
+ * transaction", which reads like a broken contract and is not one. Nothing
+ * was sent and nothing was spent — the fix is to answer the popup.
+ */
+function isWalletRefusal(err: unknown): boolean {
+  return err instanceof Error && /reject|declin|denied|cancel/i.test(err.message);
+}
+
 /** Turns anything thrown by a write into a sentence, never into silence. */
 function describeWriteFailure(err: unknown, fallback: string): WriteResult {
   if (isWalletUnavailable(err)) {
     return { success: false, needsWallet: true, error: NO_WALLET_MESSAGE };
+  }
+  // Before the refusal regex, not after: `PayrollError` messages are already
+  // written for a person (see packages/api/src/errors.ts) and one of them
+  // could easily contain the word "cancel" without a wallet being involved.
+  if (err instanceof PayrollError) {
+    return { success: false, error: err.message };
+  }
+  if (isWalletRefusal(err)) {
+    return { success: false, error: WALLET_REFUSED_MESSAGE };
   }
   const detail = err instanceof Error && err.message.trim() ? err.message : fallback;
   return { success: false, error: detail };
@@ -191,7 +220,20 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setRecord(null);
         }
 
-        setOffer(await currentApi.getMyOffer());
+        // Live, this cannot succeed and is not meant to. The rate and salt
+        // that open the on-chain commitment never travel through the api or
+        // the chain, so the contract-backed implementation throws
+        // `OfferNotYetReceivedError` by design. That message is addressed to
+        // a developer reading the rulebook; rendering it as a page-level
+        // failure told the worker the app was broken while the accept form
+        // right below it — which exists to collect those two values by hand
+        // — was working perfectly.
+        try {
+          setOffer(await currentApi.getMyOffer());
+        } catch (offerError) {
+          if (!live) throw offerError;
+          setOffer(null);
+        }
       } catch (err) {
         console.error('Failed to load payroll record:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch employment record');
