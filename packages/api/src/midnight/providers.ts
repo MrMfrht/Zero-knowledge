@@ -40,7 +40,7 @@ import type {
   FinalizedTransaction,
   TransactionId,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PayrollPrivateState, PayrollPrivateStateId } from './contract.js';
+import type { PayrollCircuitId, PayrollPrivateState, PayrollPrivateStateId } from './contract.js';
 import { ZK_CONFIG_PATH } from './contract.js';
 
 const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
@@ -86,7 +86,7 @@ function buildWalletAndMidnightProvider(connectedApi: ConnectedAPI): WalletProvi
 export interface PayrollProviders {
   readonly privateStateProvider: PrivateStateProvider<PayrollPrivateStateId, PayrollPrivateState>;
   readonly publicDataProvider: ReturnType<typeof indexerPublicDataProvider>;
-  readonly zkConfigProvider: FetchZkConfigProvider<string>;
+  readonly zkConfigProvider: FetchZkConfigProvider<PayrollCircuitId>;
   readonly proofProvider: ReturnType<typeof createProofProvider>;
   readonly walletProvider: WalletProvider;
   readonly midnightProvider: MidnightProvider;
@@ -145,7 +145,7 @@ export async function connectPayrollProviders(connectedApi: ConnectedAPI): Promi
   // ZK assets are served from THIS app's own origin (the employer/worker app
   // hosting this package), not from the wallet or the indexer — the app must
   // ship packages/contract/src/managed/{keys,zkir}/ under ZK_CONFIG_PATH.
-  const zkConfigProvider = new FetchZkConfigProvider<string>(
+  const zkConfigProvider = new FetchZkConfigProvider<PayrollCircuitId>(
     new URL(ZK_CONFIG_PATH, window.location.origin).toString(),
     window.fetch.bind(window),
   );

@@ -31,6 +31,22 @@ export const PAYROLL_PRIVATE_STATE_ID = 'payrollPrivateState' as const;
 export type PayrollPrivateStateId = typeof PAYROLL_PRIVATE_STATE_ID;
 
 /**
+ * The six circuit ids `ProvableCircuits<PS>` lists in
+ * `managed/contract/index.d.ts` — needed as an explicit literal union
+ * because `FetchZkConfigProvider`/`NodeZkConfigProvider` must be
+ * parameterized by it for `findDeployedContract`'s `ContractProviders<C>`
+ * generic to line up (a plain `FetchZkConfigProvider<string>` fails that
+ * overload's structural check on `getVerifierKeys`).
+ */
+export type PayrollCircuitId =
+  | 'hire'
+  | 'acceptHire'
+  | 'approveHours'
+  | 'confirmPayment'
+  | 'proveContribution'
+  | 'endEmployment';
+
+/**
  * Where the ZK assets (`keys/`, `zkir/`) are served from at runtime.
  *
  * `packages/contract/src/managed/` is the `--skip-zk` build committed to the

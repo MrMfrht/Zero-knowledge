@@ -33,10 +33,19 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { DustSecretKey, Intent, Transaction as ProtocolTransaction, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { Signature } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { Transaction as ProtocolTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { UnboundTransaction, WalletProvider, MidnightProvider } from '@midnight-ntwrk/midnight-js-types';
-import { Transaction as WalletTransaction } from '@midnight-ntwrk/ledger-v8';
+// The wallet family (`wallet-sdk`/`testkit-js`) and `midnight-js-contracts`
+// resolve two nominally distinct copies of `ledger-v8` (confirmed by
+// `npm run typecheck`: top-level 8.1.1 vs 8.1.0 nested under
+// `midnight-js-protocol`). `ZswapSecretKeys`/`DustSecretKey`/`Intent` here
+// are deliberately the WALLET family's, because they cross into
+// `wallet.start`/`wallet.balanceUnboundTransaction` — mixing in the
+// protocol-family versions of these three is what caused the errors this
+// comment replaces. Only the transaction object itself is round-tripped
+// between families, via `.serialize()`/`.deserialize(...)` below.
+import { DustSecretKey, Intent, Transaction as WalletTransaction, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
+import type { Signature } from '@midnight-ntwrk/ledger-v8';
 import { FluentWalletBuilder } from '@midnight-ntwrk/testkit-js';
 import {
   PAYROLL_PRIVATE_STATE_ID,
