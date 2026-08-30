@@ -9,3 +9,10 @@ D_docs/audit_vs_plan.md
 D_docs/BACKEND_FINAL_STATUS.md
 # Compact compiler output — A commits packages/contract/src/managed/ deliberately,
 # so it is NOT ignored. Everything else the toolchain generates is.
+
+# testkit-js writes a pino log per run under <package>/logs/. Build output.
+logs/
+
+# levelPrivateStateProvider's on-disk store. Encrypted, but it is still the
+# deployer's private state — it must never be committed.
+midnight-level-db/

@@ -170,11 +170,70 @@ stubbing. `smoke.mjs` exercises the complete lifecycle including every failure
 case — it is your worked example for contexts, state threading between calls
 (`r.context.currentQueryContext.state`), and per-caller private state.
 
-### 2. The deploy script
+### 2. ✅ The deploy script — done, and it works
 
-One command that deploys to the local devnet and prints the contract address.
-E needs the address for the auditor's indexer queries; C and D need it to point
-their apps at something real.
+`deploy.ts` completed end-to-end against the local devnet on 2026-08-30. There
+is now a devnet to run it against (`docker/compose.yml`) and a companion
+`inspect.ts` that reads the deployed ledger back off the indexer, so "it
+printed an address" can be checked rather than believed.
+
+```bash
+docker compose -f docker/compose.yml up -d   # wait for all three healthy
+npm run typecheck -w @nightshift/api
+cd packages/api && npx tsx src/midnight/deploy.ts --contribution-pct 25
+```
+
+Then, with the address it prints:
+
+```bash
+cd packages/api && npx tsx src/midnight/inspect.ts <address>
+```
+
+That last one printed `contributionRate 25%` and a populated `deploymentId`,
+which is what confirms the two-argument constructor survived the merge. E can
+take the address for the auditor's indexer queries; C and D can point at it.
+
+Your two open questions from the branch are both answered:
+
+- **`availableCoins` empty while `balances` was non-zero** — not a sync bug.
+  It was the duplicated `ledger-v8` (below): the coins were being decoded by a
+  different copy of the WASM than the one being queried. With one copy on
+  disk, the run reports `total=5 available=5 pending=0`.
+- **`additionalFeeOverhead`** — your `1_000n` is what deployed successfully,
+  so it stays. The midnight-js skill's `300_000_000_000_000n` was not needed
+  here; leaving it unchanged rather than raising it on speculation.
+
+#### Two traps this cost real time on — please read before your next install
+
+**Your `overrides` pin needs the lockfile deleted to take effect.** Adding
+`"overrides": { "@midnight-ntwrk/ledger-v8": "8.1.1" }` to the root
+`package.json` and running `npm install` does *nothing* if `package-lock.json`
+already pins a nested copy — npm honours the existing resolution. Worse, npm 11
+does not write an `overrides` block into the lockfile root, so grepping the
+lockfile to check whether the pin "took" tells you nothing either way. The fix:
+
+```bash
+rm package-lock.json && npm install
+```
+
+Until that is done you get **two copies of `ledger-v8`** and errors like
+`Error: expected instance of DustParameters` — two structurally identical WASM
+classes from different module instances failing an `instanceof`. Verify with:
+
+```bash
+find node_modules -type d -name ledger-v8 -not -path "*/ledger-v8/*"
+```
+
+One line of output is correct. Two means the override has not applied.
+
+**Windows: `new URL(...).pathname` is not a filesystem path.** It yields
+`/C:/Users/...`, with a leading slash `fs` cannot open, so `zkConfigPath`
+silently pointed nowhere. Use `fileURLToPath`. Half this team is on Windows.
+
+`docker/compose.yml`'s header documents two more Windows-only traps (Git Bash
+path mangling, and Docker Desktop's containerd image store unpacking the
+midnight-node image as zero-byte files). Worth reading before you spend an
+afternoon on either.
 
 ### 3. Payment confirmation tracking — your honestly-flagged gap
 

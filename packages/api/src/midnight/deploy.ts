@@ -20,10 +20,14 @@
  * kilobyte-sized files there, someone has committed a `--skip-zk` build over
  * them and no proof will generate).
  *
- * ⚠️ A full deploy has still not succeeded end-to-end. Four real bugs were
- * found and fixed by running it (see the comments below, each citing what it
- * actually failed with); the open one is the `availableCoins`/`balances`
- * mismatch documented at the DUST registration step.
+ * ✅ Verified end-to-end against the local devnet on 2026-08-30: deployed to
+ * `309b78f7…6ae77080`, and `inspect.ts` read `contributionRate 25%` and a
+ * populated `deploymentId` back off the indexer. Every bug fixed along the
+ * way is commented below next to the line that caused it, with the error it
+ * actually produced — none of them were found by reading.
+ *
+ * Before running this, `docker compose -f docker/compose.yml up -d` and wait
+ * for all three services to report healthy.
  */
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -52,6 +56,7 @@ import type { UnboundTransaction, WalletProvider, MidnightProvider } from '@midn
 import { DustSecretKey, Intent, LedgerParameters, Transaction as WalletTransaction, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v8';
 import type { Signature } from '@midnight-ntwrk/ledger-v8';
 import { FluentWalletBuilder } from '@midnight-ntwrk/testkit-js';
+import { MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
 import {
   PAYROLL_PRIVATE_STATE_ID,
   compiledPayrollContract,
@@ -102,6 +107,39 @@ function parseArgs(argv: string[]): DeployArgs {
 }
 
 /**
+ * The password that encrypts the deployer's private state on disk.
+ *
+ * `levelPrivateStateProvider` encrypts its LevelDB store at rest and enforces
+ * a real strength policy on the password: 16+ characters, at least 3 of
+ * {uppercase, lowercase, digit, special}, no run of 4+ identical or
+ * consecutive characters. Those limits are constants in
+ * `@midnight-ntwrk/midnight-js-utils` (`MIN_PASSWORD_LENGTH`,
+ * `MIN_CHARACTER_CLASSES`, `MAX_CONSECUTIVE_REPEATED`,
+ * `MIN_SEQUENTIAL_LENGTH`), and a violation aborts the deploy with
+ * `PasswordValidationError` at the moment it first writes private state —
+ * i.e. after proving, which is a slow way to learn you had a typo.
+ *
+ * The fallback is public knowledge, so it is confined to `undeployed`. On any
+ * real network this is the thing standing between an attacker with disk
+ * access and the deployer's private state, and it has to come from outside
+ * the repository.
+ */
+function privateStorePassword(networkId: NetworkId): string {
+  const fromEnv = process.env.NIGHTSHIFT_PRIVATE_STORE_PASSWORD;
+  if (fromEnv) return fromEnv;
+  if (networkId !== 'undeployed') {
+    throw new Error(
+      `NIGHTSHIFT_PRIVATE_STORE_PASSWORD must be set when deploying to "${networkId}". ` +
+        'It encrypts the deployer private state at rest. The built-in fallback is ' +
+        'committed to this repository and is only permitted against a local throwaway devnet.',
+    );
+  }
+  // Local devnet only. This chain is wiped by `docker compose down -v` and
+  // holds nothing real, so the password being in plain sight costs nothing.
+  return 'Nightshift-Local-Devnet-9';
+}
+
+/**
  * The documented workaround for the wallet SDK's `signRecipe` bug (see
  * `.agents/skills/midnight-js/SKILL.md` §8): a proven `UnboundTransaction`'s
  * intents carry `'proof'` data, but `signRecipe` hardcodes the `'pre-proof'`
@@ -140,9 +178,6 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   setNetworkId(args.networkId);
 
-  const shieldedSecretKeys = ZswapSecretKeys.fromSeed(Buffer.from(args.seedHex, 'hex'));
-  const dustSecretKey = DustSecretKey.fromSeed(Buffer.from(args.seedHex, 'hex'));
-
   // EnvironmentConfiguration's exact required shape (confirmed against
   // node_modules/@midnight-ntwrk/testkit-js/dist/test-environment/
   // environment-configuration.d.ts, not guessed — the first attempt here
@@ -171,7 +206,22 @@ async function main(): Promise<void> {
     })
     .withSeed(args.seedHex)
     .buildWithoutStarting();
-  void seeds;
+  // Derive from the builder's PER-ROLE seeds, never from the raw seed.
+  //
+  // A seed phrase is not a key. `withSeed()` runs it through the HD wallet
+  // (`selectAccount(0)` + `Roles.Zswap` / `Roles.NightExternal` / `Roles.Dust`,
+  // visible in testkit-js/dist/index.mjs) and hands the derived per-role seeds
+  // back as `seeds`. Calling `DustSecretKey.fromSeed(rawSeed)` instead yields
+  // a valid key for an account nobody funded.
+  //
+  // The failure is quiet and misleading, which is why this comment is long:
+  // the unshielded side keeps working, because it uses `keystore`, which the
+  // builder derived correctly. So the deployer address and its 250000000000000
+  // NIGHT print exactly right, and only DUST stays stubbornly at 0 — for the
+  // full 600s wait, never moving off zero, because the genesis NIGHT generates
+  // DUST to the real Dust-role key while we sat watching a different one.
+  const shieldedSecretKeys = ZswapSecretKeys.fromSeed(seeds.shielded);
+  const dustSecretKey = DustSecretKey.fromSeed(seeds.dust);
   await wallet.start(shieldedSecretKeys, dustSecretKey);
 
   console.log('Waiting for wallet to sync...');
@@ -246,7 +296,27 @@ async function main(): Promise<void> {
               'genesis master wallet and that the indexer is caught up with the node.',
       );
     } else {
+      // Registered but generating nothing is its own failure mode, and the
+      // registration flag alone cannot tell us which. `estimateDustGeneration`
+      // projects what each UTXO should be producing, so a row of zeroes here
+      // means the NIGHT is registered to a DUST address we do not hold the key
+      // for, while nonzero values mean it is simply still accruing.
       console.log('All visible NIGHT UTXOs are already registered for DUST generation.');
+      // A `DustAddress` is a class wrapping one bigint, with no `toString`.
+      // Interpolating it prints "[object Object]" and `JSON.stringify` throws
+      // outright ("Do not know how to serialize a BigInt") — which would turn
+      // a diagnostic into a crash. Bech32m is the format a human can actually
+      // compare against another wallet's.
+      console.log(`  our DUST address: ${MidnightBech32m.encode(args.networkId, state.dust.address).asString()}`);
+      // Do NOT reach for `state.dust.estimateDustGeneration` here to find out
+      // what these UTXOs should be producing. It is broken in
+      // wallet-sdk-dust-wallet 8.1.x: `fakeGenerationInfo` builds a projection
+      // record with `dtime: undefined` and passes it to `ledger.updatedValue`,
+      // which wants a u128 and rejects it with
+      // "invalid type: unit value, expected u128"
+      // (dist/v1/CoinsAndBalances.js). It also takes a plain `Utxo`, not the
+      // `UtxoWithMeta` the unshielded wallet hands out, so it does not even
+      // typecheck against `totalCoins`. Tried on 2026-08-30; cost half an hour.
     }
     console.log('Waiting for a spendable DUST coin (this can take a few minutes)...');
     state = await Rx.firstValueFrom(
@@ -260,8 +330,11 @@ async function main(): Promise<void> {
         ),
         Rx.filter((s) => s.dust.availableCoins.length >= 1),
         Rx.timeout({
-          each: 180_000,
-          with: () => Rx.throwError(() => new Error('No spendable DUST coin appeared within 180s')),
+          // DUST accrues on a chain-time curve, so a freshly-started devnet
+          // genuinely needs minutes, not seconds. 180s was short enough to
+          // look like a hang when it was only impatience.
+          each: 600_000,
+          with: () => Rx.throwError(() => new Error('No spendable DUST coin appeared within 600s')),
         }),
       ),
     );
@@ -321,12 +394,12 @@ async function main(): Promise<void> {
   const providers = {
     privateStateProvider: levelPrivateStateProvider({
       privateStateStoreName: 'payroll-private-state',
-      accountId: 'nightshift-deploy',
-      // Deploy-time-only local cache, not the salt/rate storage the README
-      // warns about — a fixed password is acceptable for this CLI tool
-      // (16+ chars per the README's private-state note); rotate if this
-      // script is ever used against real funds instead of a local devnet.
-      privateStoragePasswordProvider: () => 'nightshift-deploy-tool-local-cache',
+      // Scope the store to THIS deployer, not to a constant. `accountId` is
+      // what keeps two wallets sharing one LevelDB from reading each other's
+      // private state; the SDK's own doc example passes a wallet address.
+      // A shared literal here would silently hand run #2 run #1's state.
+      accountId: keystore.getBech32Address().asString(),
+      privateStoragePasswordProvider: () => privateStorePassword(args.networkId),
     }),
     publicDataProvider: indexerPublicDataProvider(args.indexerUri, args.indexerWsUri),
     zkConfigProvider,
