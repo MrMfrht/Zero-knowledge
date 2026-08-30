@@ -56,6 +56,7 @@ import {
 } from './contract.js';
 import { connectPayrollProviders, type PayrollProviders } from './providers.js';
 import { getOrCreateLocalSecret } from './localSecret.js';
+import { rememberOffer } from './offerVault.js';
 import { bytesToHex, hexToBytes } from './encoding.js';
 import { periodToUint32, uint32ToPeriod } from './periods.js';
 import { periodKey } from './periodKey.js';
@@ -120,6 +121,8 @@ export class MidnightPayrollApi implements PayrollApi {
   private readonly contractAddress: string;
   private readonly networkId: NetworkId;
   private readonly secret: Uint8Array;
+  /** Kept so the offer vault writes where the device secret already lives. */
+  private readonly storage: Storage;
   private readonly periodScanWindow: { firstPeriod: bigint; lastPeriod: bigint };
 
   /** Set once `connectWallet()` resolves; every write method requires it. */
@@ -132,7 +135,8 @@ export class MidnightPayrollApi implements PayrollApi {
     this.contractAddress = options.contractAddress;
     this.networkId = options.networkId;
     setNetworkId(this.networkId);
-    this.secret = getOrCreateLocalSecret(options.storage ?? window.localStorage);
+    this.storage = options.storage ?? window.localStorage;
+    this.secret = getOrCreateLocalSecret(this.storage);
     this.periodScanWindow = options.periodScanWindow
       ? {
           firstPeriod: periodToUint32(options.periodScanWindow.from),
@@ -263,6 +267,23 @@ export class MidnightPayrollApi implements PayrollApi {
     const salt = crypto.getRandomValues(new Uint8Array(32));
     const commitment = pureCircuits.sealRate(params.ratePerPeriod, salt);
     const workerBytes = hexToBytes(params.workerKey);
+
+    // Written BEFORE the transaction, deliberately. The salt is 32 random
+    // bytes and the chain stores only its commitment, so losing it burns the
+    // worker key forever -- `hire` refuses to overwrite an existing
+    // `agreedRate` row, and `acceptHire` needs the salt to open it. A
+    // remembered offer whose transaction then failed is harmless; the
+    // reverse is unrecoverable.
+    rememberOffer(
+      {
+        workerKey: params.workerKey,
+        ratePerPeriod: params.ratePerPeriod.toString(),
+        salt: bytesToHex(salt),
+        commitment: bytesToHex(commitment),
+        expectedHours: params.expectedHours,
+      },
+      this.storage,
+    );
 
     params.onStatus?.({ stage: 'proving' });
     try {

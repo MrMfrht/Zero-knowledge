@@ -67,3 +67,14 @@ export type {
   WorkerSummary,
 } from '@nightshift/shared';
 export { comparePeriods, formatPeriod, nextPeriod } from '@nightshift/shared';
+
+// The salt that opens a sealed rate exists only on the employer's device.
+// Exported so an app can show it again after any UI failure -- see
+// offerVault.ts for why losing it is unrecoverable.
+export {
+  listRememberedOffers,
+  recallOffer,
+  recallOfferAmount,
+  rememberOffer,
+} from './midnight/offerVault.js';
+export type { RememberedOffer } from './midnight/offerVault.js';
