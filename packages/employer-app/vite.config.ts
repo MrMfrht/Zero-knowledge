@@ -7,9 +7,12 @@ import tailwindcss from '@tailwindcss/vite';
 // because the esnext target below supports it natively.
 import wasm from 'vite-plugin-wasm';
 import path from 'path';
+// Serves the contract's compiled proving keys at /zk/payroll -- without it every
+// ZK artifact request falls through to the SPA fallback and returns index.html.
+import { zkAssets } from '../../scripts/vite-plugin-zk-assets.mjs';
 
 export default defineConfig({
-  plugins: [tailwindcss(), react(), wasm()],
+  plugins: [tailwindcss(), react(), wasm(), zkAssets()],
   // esnext keeps the top-level await the SDK relies on, rather than trying to
   // downlevel it into something that cannot express it.
   build: { target: 'esnext' },

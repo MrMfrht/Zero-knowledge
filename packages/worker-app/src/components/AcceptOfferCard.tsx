@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { usePayroll } from '../context/PayrollContext.tsx';
+import type { WriteResult } from '../context/PayrollContext.tsx';
+import { WriteFailureAlert } from './WriteFailureAlert.tsx';
 import { Briefcase, CheckCircle, AlertOctagon, HelpCircle } from 'lucide-react';
 
 export const AcceptOfferCard: React.FC = () => {
   const { offer, acceptOffer, loading } = usePayroll();
   const [enteredRate, setEnteredRate] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [mismatchError, setMismatchError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<WriteResult | null>(null);
 
   if (!offer) {
     return null;
@@ -17,16 +19,16 @@ export const AcceptOfferCard: React.FC = () => {
     if (!enteredRate.trim()) return;
 
     setSubmitting(true);
-    setMismatchError(null);
+    setFailure(null);
 
     try {
       const rateBigInt = BigInt(enteredRate);
       const res = await acceptOffer(rateBigInt, offer.salt);
-      if (!res.success && res.error) {
-        setMismatchError(res.error);
+      if (!res.success) {
+        setFailure(res);
       }
     } catch {
-      setMismatchError('Invalid numeric input for salary rate.');
+      setFailure({ success: false, error: 'Invalid numeric input for salary rate.' });
     } finally {
       setSubmitting(false);
     }
@@ -46,15 +48,17 @@ export const AcceptOfferCard: React.FC = () => {
         An employer has sealed a salary commitment on-chain. Before accepting, enter the agreed period rate to verify it matches their seal.
       </p>
 
-      {mismatchError && (
+      {failure?.isMismatch && (
         <div className="alert-box alert-error" style={{ marginBottom: '16px' }}>
           <AlertOctagon size={20} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
           <div>
             <div className="alert-error-title">❌ Verification Failed (Offer Mismatch)</div>
-            <div>{mismatchError}</div>
+            <div>{failure.error}</div>
           </div>
         </div>
       )}
+
+      <WriteFailureAlert failure={failure} />
 
       <form onSubmit={handleAccept} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div className="form-group" style={{ flex: 1, minWidth: '220px' }}>

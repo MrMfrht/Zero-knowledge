@@ -52,6 +52,50 @@ export const PERSONAS: PersonaOption[] = [
   },
 ];
 
+/**
+ * The outcome of a write, in the form the UI needs to render it.
+ *
+ * Three outcomes look identical to a `try/catch` and must not look identical
+ * to a person: the contract refusing an untrue claim (`isMismatch` — the
+ * product working), this browser having no wallet to sign with
+ * (`needsWallet` — nothing was ever sent), and everything else.
+ */
+export interface WriteResult {
+  success: boolean;
+  /** Always present when `success` is false. Written to be shown as-is. */
+  error?: string;
+  isMismatch?: boolean;
+  needsWallet?: boolean;
+}
+
+const NO_WALLET_MESSAGE =
+  'Connect a Midnight wallet to do this. Nothing was sent — this action has to be ' +
+  'signed and proved on your own device, so no wallet means no transaction.';
+
+/**
+ * Two different throws mean "there is no wallet to sign with".
+ *
+ * `NoWalletFoundError` comes from the connector when no extension is injected
+ * on `window.midnight`; the plain `Error('No wallet connected...')` comes from
+ * `MidnightPayrollApi`'s own guard when a wallet exists but this session never
+ * connected. Matched by name and message rather than `instanceof` because
+ * neither class is re-exported from `@nightshift/api`'s entry point, and
+ * reaching into another package's internals is forbidden (CLAUDE.md).
+ */
+function isWalletUnavailable(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return err.name === 'NoWalletFoundError' || /no wallet (found|connected)/i.test(err.message);
+}
+
+/** Turns anything thrown by a write into a sentence, never into silence. */
+function describeWriteFailure(err: unknown, fallback: string): WriteResult {
+  if (isWalletUnavailable(err)) {
+    return { success: false, needsWallet: true, error: NO_WALLET_MESSAGE };
+  }
+  const detail = err instanceof Error && err.message.trim() ? err.message : fallback;
+  return { success: false, error: detail };
+}
+
 interface PayrollContextType {
   activeWorkerKey: WorkerKey;
   activePersona: PersonaOption;
@@ -66,9 +110,16 @@ interface PayrollContextType {
   setPersona: (key: WorkerKey) => void;
   refresh: () => Promise<void>;
   resetStore: () => Promise<void>;
-  acceptOffer: (ratePerPeriod: bigint, salt: string) => Promise<{ success: boolean; error?: string }>;
-  confirmPayment: (period: Period, amountReceived: bigint) => Promise<{ success: boolean; isMismatch?: boolean; error?: string }>;
-  proveContribution: (period: Period, declared: bigint) => Promise<{ success: boolean; isMismatch?: boolean; error?: string }>;
+  /** Whether this browser has a wallet connected and able to sign. */
+  walletConnected: boolean;
+  walletBusy: boolean;
+  /** Why the last connect attempt failed, ready to render. Null when fine. */
+  walletError: string | null;
+  connectWallet: () => Promise<void>;
+  disconnectWallet: () => Promise<void>;
+  acceptOffer: (ratePerPeriod: bigint, salt: string) => Promise<WriteResult>;
+  confirmPayment: (period: Period, amountReceived: bigint) => Promise<WriteResult>;
+  proveContribution: (period: Period, declared: bigint) => Promise<WriteResult>;
 }
 
 const PayrollContext = createContext<PayrollContextType | undefined>(undefined);
@@ -99,6 +150,14 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // The worker signs their own transactions -- confirmPayment and
+  // proveContribution are proved on this device against this person's own
+  // secret, which is the entire point of the product. So the worker app needs
+  // its own wallet connection; it cannot borrow the employer's.
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   const activePersona: PersonaOption = live
     ? {
@@ -169,31 +228,33 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await refresh();
   };
 
-  const acceptOffer = async (ratePerPeriod: bigint, salt: string) => {
+  const acceptOffer = async (ratePerPeriod: bigint, salt: string): Promise<WriteResult> => {
     try {
       await api.acceptOffer({ ratePerPeriod, salt });
       await refresh();
       return { success: true };
     } catch (err) {
+      // Logged as well as returned: the returned sentence is for the person,
+      // the console line is what a developer needs when they ask why.
+      console.error('acceptOffer failed:', err);
       if (err instanceof OfferMismatchError) {
         return {
           success: false,
+          isMismatch: true,
           error: 'The sealed amount does not match what you entered. Do not accept — contact your employer.',
         };
       }
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Failed to accept offer',
-      };
+      return describeWriteFailure(err, 'Failed to accept offer.');
     }
   };
 
-  const confirmPayment = async (period: Period, amountReceived: bigint) => {
+  const confirmPayment = async (period: Period, amountReceived: bigint): Promise<WriteResult> => {
     try {
       await api.confirmPayment({ period, amountReceived });
       await refresh();
       return { success: true };
     } catch (err) {
+      console.error('confirmPayment failed:', err);
       if (err instanceof PaymentMismatchError) {
         await refresh();
         return {
@@ -202,19 +263,17 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
           error: 'Cannot confirm. The amount you received does not match your agreed salary. This period stays unconfirmed on the public record.',
         };
       }
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Confirmation failed',
-      };
+      return describeWriteFailure(err, 'Confirmation failed.');
     }
   };
 
-  const proveContribution = async (period: Period, declared: bigint) => {
+  const proveContribution = async (period: Period, declared: bigint): Promise<WriteResult> => {
     try {
       await api.proveContribution({ period, declared });
       await refresh();
       return { success: true };
     } catch (err) {
+      console.error('proveContribution failed:', err);
       if (err instanceof ContributionMismatchError) {
         return {
           success: false,
@@ -222,10 +281,45 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
           error: 'The declared contribution was not calculated on your real salary.',
         };
       }
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Contribution verification failed',
-      };
+      return describeWriteFailure(err, 'Contribution verification failed.');
+    }
+  };
+
+  const connectWallet = async () => {
+    setWalletBusy(true);
+    setWalletError(null);
+    try {
+      const status = await api.connectWallet();
+      setWalletConnected(status.connected);
+      // A freshly connected wallet can change nothing about who this browser
+      // IS -- identity comes from localSk, not the wallet -- but it does
+      // change what is possible, so re-read rather than leave a stale screen.
+      await refresh();
+    } catch (err) {
+      console.error('connectWallet failed:', err);
+      setWalletConnected(false);
+      setWalletError(
+        isWalletUnavailable(err)
+          ? 'No Midnight wallet found. Install the Lace Midnight Preview extension, set its network to Undeployed, and reload this page.'
+          : err instanceof Error && err.message.trim()
+            ? err.message
+            : 'Could not connect to the wallet.',
+      );
+    } finally {
+      setWalletBusy(false);
+    }
+  };
+
+  const disconnectWallet = async () => {
+    setWalletBusy(true);
+    try {
+      await api.disconnectWallet();
+      setWalletConnected(false);
+      setWalletError(null);
+    } catch (err) {
+      console.error('disconnectWallet failed:', err);
+    } finally {
+      setWalletBusy(false);
     }
   };
 
@@ -243,6 +337,11 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setPersona,
         refresh,
         resetStore,
+        walletConnected,
+        walletBusy,
+        walletError,
+        connectWallet,
+        disconnectWallet,
         acceptOffer,
         confirmPayment,
         proveContribution,

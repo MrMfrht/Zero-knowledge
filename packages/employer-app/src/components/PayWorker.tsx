@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { CreditCard, Send, ShieldCheck, AlertCircle, Sparkles, Wallet } from 'lucide-react';
 import { DEMO_KARIM, DEMO_DANA, DEMO_SAM, DEMO_SHIELDED_ADDRESSES } from '@nightshift/api';
 import type { PayrollApi, TransactionStatus } from '@nightshift/api';
+import { explainPayrollFailure } from '../explainPayrollFailure';
 
 interface PayWorkerProps {
   api: PayrollApi;
   walletConnected: boolean;
-  onConnectWallet: () => void;
+  /** Resolves to the reason the wallet did not connect, or `null` on success. */
+  onConnectWallet: () => Promise<string | null>;
   initialWorkerKey?: string | undefined;
   onPaymentSent: (workerKey: string, amount: string, period: string) => void;
 }
@@ -46,9 +48,12 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
     // payWorker() genuinely throws with no wallet connected against the
     // real MidnightPayrollApi — prompt for it here rather than letting the
     // call fail. Against the mock this just flips walletConnected to true.
+    // Awaiting the prompt is what stops the failure disappearing: the connect
+    // attempt can itself fail (no extension installed), and its reason belongs
+    // beside this button, not only in an uncaught promise.
     if (!walletConnected) {
-      onConnectWallet();
-      setError('Connect a wallet first, then send the payment.');
+      const connectFailure = await onConnectWallet();
+      if (connectFailure) setError(connectFailure);
       return;
     }
 
@@ -69,9 +74,11 @@ export const PayWorker: React.FC<PayWorkerProps> = ({
         timestamp: new Date().toLocaleTimeString(),
       });
       onPaymentSent(workerKey.trim(), amountInput.trim(), period.trim());
-    } catch (err) {
+    } catch (error: unknown) {
+      // 'failed' is what un-sticks the spinner — `isSending` above treats
+      // every other non-idle stage as still in flight.
       setStage('failed');
-      setError(err instanceof Error ? err.message : String(err));
+      setError(explainPayrollFailure(error).message);
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, CheckCircle2, AlertCircle, Info, Sparkles, FileText } from 'lucide-react';
 import type { PayrollApi } from '@nightshift/api';
+import { explainPayrollFailure } from '../explainPayrollFailure';
 
 interface ApproveHoursProps {
   api: PayrollApi;
@@ -36,9 +37,11 @@ export const ApproveHours: React.FC<ApproveHoursProps> = ({ api, initialWorkerKe
 
       setSuccessMsg(`Timesheet approved! Approved ${parsedHours} hours for period ${period} on Midnight ledger.`);
       onSuccess();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to approve timesheet.');
+    } catch (error: unknown) {
+      setError(explainPayrollFailure(error).message);
     } finally {
+      // Runs on the wallet-missing path too, so the button never keeps
+      // spinning over a failure the person can already read.
       setLoading(false);
     }
   };

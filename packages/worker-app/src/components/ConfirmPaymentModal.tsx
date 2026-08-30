@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { usePayroll } from '../context/PayrollContext.tsx';
+import type { WriteResult } from '../context/PayrollContext.tsx';
+import { WriteFailureAlert } from './WriteFailureAlert.tsx';
 import type { Period } from '@nightshift/shared';
 import { formatPeriod } from '@nightshift/shared';
 import { X, CheckCircle2, ShieldAlert, AlertTriangle, ArrowRight } from 'lucide-react';
@@ -13,7 +15,7 @@ export const ConfirmPaymentModal: React.FC<ConfirmPaymentModalProps> = ({ period
   const { confirmPayment } = usePayroll();
   const [amountInput, setAmountInput] = useState<string>('5000');
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [mismatchError, setMismatchError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<WriteResult | null>(null);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,7 +23,7 @@ export const ConfirmPaymentModal: React.FC<ConfirmPaymentModalProps> = ({ period
     if (!amountInput.trim()) return;
 
     setSubmitting(true);
-    setMismatchError(null);
+    setFailure(null);
     setSuccessMsg(false);
 
     try {
@@ -33,11 +35,13 @@ export const ConfirmPaymentModal: React.FC<ConfirmPaymentModalProps> = ({ period
         setTimeout(() => {
           onClose();
         }, 1800);
-      } else if (res.isMismatch && res.error) {
-        setMismatchError(res.error);
+      } else {
+        // Every unsuccessful result lands here, mismatch or not. Filtering on
+        // `isMismatch` was what made a missing wallet look like a dead button.
+        setFailure(res);
       }
     } catch {
-      setMismatchError('Please enter a valid numeric payment amount.');
+      setFailure({ success: false, error: 'Please enter a valid numeric payment amount.' });
     } finally {
       setSubmitting(false);
     }
@@ -69,12 +73,14 @@ export const ConfirmPaymentModal: React.FC<ConfirmPaymentModalProps> = ({ period
           </div>
         )}
 
-        {mismatchError && (
+        <WriteFailureAlert failure={failure} />
+
+        {failure?.isMismatch && (
           <div className="alert-box alert-error">
             <AlertTriangle size={24} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
             <div>
               <div className="alert-error-title">The Demo Moment — Intended Refusal</div>
-              <div style={{ marginTop: '4px' }}>{mismatchError}</div>
+              <div style={{ marginTop: '4px' }}>{failure.error}</div>
               <div style={{ marginTop: '8px', fontSize: '0.775rem', color: '#fda4af' }}>
                 🛡️ <em>The contract refuses to record an underpayment as correct. This period remains permanently unconfirmed to auditors.</em>
               </div>

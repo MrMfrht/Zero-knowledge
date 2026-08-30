@@ -38,6 +38,7 @@ import {
   ZswapSecretKeys,
 } from '@midnight-ntwrk/ledger-v8';
 import type { Signature } from '@midnight-ntwrk/ledger-v8';
+import type { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { FluentWalletBuilder } from '@midnight-ntwrk/testkit-js';
 import { MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
 import type { NetworkId } from './network.js';
@@ -60,6 +61,20 @@ export interface HeadlessWallet {
   readonly walletAndMidnightProvider: WalletProvider & MidnightProvider;
   /** Bech32m unshielded address — the one the faucet/genesis funds. */
   readonly address: string;
+  /**
+   * The wallet itself, for the few callers that need more than the provider
+   * bridge -- `fund.ts` sends NIGHT with `transferTransaction`, which has no
+   * equivalent on `WalletProvider`. Contract calls should use
+   * `walletAndMidnightProvider` instead of reaching for this.
+   */
+  readonly wallet: WalletFacade;
+  /** The keys `transferTransaction` and `finalizeRecipe` ask for by name. */
+  readonly secretKeys: {
+    readonly shieldedSecretKeys: ZswapSecretKeys;
+    readonly dustSecretKey: DustSecretKey;
+  };
+  /** Signs unshielded intents. Needed by the signRecipe workaround below. */
+  readonly signData: (payload: Uint8Array) => Signature;
   /** Releases the wallet's subscriptions. Always call this in a `finally`. */
   stop(): Promise<void>;
 }
@@ -71,7 +86,7 @@ export interface HeadlessWallet {
  * failing with "Failed to clone intent". Signing manually with the correct
  * marker per transaction half sidesteps it.
  */
-function signTransactionIntents(
+export function signTransactionIntents(
   tx: { intents?: Map<number, unknown> },
   signFn: (payload: Uint8Array) => Signature,
   proofMarker: 'proof' | 'pre-proof',
@@ -269,6 +284,9 @@ export async function createHeadlessWallet(options: HeadlessWalletOptions): Prom
   return {
     walletAndMidnightProvider,
     address,
+    wallet,
+    secretKeys: { shieldedSecretKeys, dustSecretKey },
+    signData: (payload: Uint8Array) => keystore.signData(payload),
     // Without this the wallet's subscriptions stay open and the process never
     // exits on its own — a failed run sat at 100% CPU for minutes, needing a
     // manual kill.

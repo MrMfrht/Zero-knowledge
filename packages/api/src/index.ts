@@ -38,6 +38,12 @@ export {
 export type { MockPayrollApiOptions } from './mock/MockPayrollApi.js';
 
 export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
+
+// Both apps need to tell "no wallet extension in this browser" apart from a
+// genuine circuit failure, and were reduced to matching on error.name because
+// this class was not reachable from here. Exporting it lets them use
+// `instanceof` without reaching into another package's internals.
+export { NoWalletFoundError } from './midnight/walletConnector.js';
 export type { MidnightPayrollApiOptions } from './midnight/MidnightPayrollApi.js';
 export { NETWORK_IDS } from './midnight/network.js';
 export type { NetworkId } from './midnight/network.js';

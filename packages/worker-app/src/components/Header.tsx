@@ -1,10 +1,22 @@
 import React from 'react';
 import { usePayroll, PERSONAS } from '../context/PayrollContext.tsx';
-import { ShieldCheck, RotateCcw, User, Sparkles } from 'lucide-react';
+import { ShieldCheck, RotateCcw, User, Sparkles, Wallet } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { activeWorkerKey, activePersona, live, backendLabel, setPersona, resetStore, loading } =
-    usePayroll();
+  const {
+    activeWorkerKey,
+    activePersona,
+    live,
+    backendLabel,
+    setPersona,
+    resetStore,
+    loading,
+    walletConnected,
+    walletBusy,
+    walletError,
+    connectWallet,
+    disconnectWallet,
+  } = usePayroll();
 
   return (
     <header className="glass-card app-header">
@@ -63,6 +75,29 @@ export const Header: React.FC = () => {
               Reset Demo State
             </button>
           </>
+        )}
+
+        {/*
+          Live only, because the mock signs nothing. The worker proves
+          confirmPayment and proveContribution on their own device against
+          their own secret -- that is the product, not a convenience -- so
+          this app needs its own wallet and cannot borrow the employer's.
+        */}
+        {live && (
+          <button
+            className={walletConnected ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
+            onClick={() => (walletConnected ? disconnectWallet() : connectWallet())}
+            disabled={walletBusy}
+            title={
+              walletError ??
+              (walletConnected
+                ? 'Disconnect this wallet'
+                : 'Connect a Midnight wallet to sign and prove on this device')
+            }
+          >
+            <Wallet size={14} />
+            {walletBusy ? 'Connecting…' : walletConnected ? 'Wallet Connected' : 'Connect Wallet'}
+          </button>
         )}
 
         <div

@@ -6,12 +6,14 @@ import { TeamList } from './components/TeamList';
 import { HireForm } from './components/HireForm';
 import { ApproveHours } from './components/ApproveHours';
 import { PayWorker } from './components/PayWorker';
-import { ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
+import { explainPayrollFailure } from './explainPayrollFailure';
+import { ShieldCheck, Info, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('team');
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletBusy, setWalletBusy] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [selectedWorkerKey, setSelectedWorkerKey] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -30,16 +32,31 @@ export default function App() {
   // hire/approveHours/payWorker genuinely throw with no wallet connected).
   useEffect(() => {
     let cancelled = false;
-    api.getWalletStatus().then((status) => {
-      if (!cancelled) setWalletConnected(status.connected);
-    });
+    api
+      .getWalletStatus()
+      .then((status) => {
+        if (!cancelled) setWalletConnected(status.connected);
+      })
+      // An unhandled rejection here would leave the header stuck on
+      // "disconnected" with no explanation anywhere on screen.
+      .catch((error: unknown) => {
+        if (!cancelled) setWalletError(explainPayrollFailure(error).message);
+      });
     return () => {
       cancelled = true;
     };
   }, [api]);
 
-  const handleToggleWallet = useCallback(async () => {
+  /**
+   * Resolves to the reason the wallet did not connect, or `null` on success.
+   *
+   * Returning the reason rather than only storing it lets a caller that is
+   * mid-flow — PayWorker's send button — show it beside the control the
+   * person just pressed, instead of only in the banner at the top of the page.
+   */
+  const handleToggleWallet = useCallback(async (): Promise<string | null> => {
     setWalletBusy(true);
+    setWalletError(null);
     try {
       if (walletConnected) {
         await api.disconnectWallet();
@@ -48,6 +65,11 @@ export default function App() {
         const status = await api.connectWallet();
         setWalletConnected(status.connected);
       }
+      return null;
+    } catch (error: unknown) {
+      const { message } = explainPayrollFailure(error);
+      setWalletError(message);
+      return message;
     } finally {
       setWalletBusy(false);
     }
@@ -102,6 +124,26 @@ export default function App() {
               : `Demo mode — ${label}. Set VITE_CONTRACT_ADDRESS to talk to a deployed contract.`}
           </span>
         </div>
+
+        {/*
+          Why the wallet is not connected, stated on screen. Before this
+          existed the connect button rejected into an uncaught promise and the
+          page showed nothing at all — the worst possible demo failure.
+        */}
+        {walletError && (
+          <div className="mb-6 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-500/5 px-3 py-2 text-xs text-rose-200">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <span className="flex-1">{walletError}</span>
+            <button
+              type="button"
+              onClick={() => setWalletError(null)}
+              aria-label="Dismiss wallet error"
+              className="shrink-0 text-rose-400 hover:text-rose-200 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Toast Notification */}
         {toast && (

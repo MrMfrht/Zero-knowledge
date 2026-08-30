@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, AlertTriangle, Lock, Copy, Check, Sparkles, Shield, KeyRound, ExternalLink } from 'lucide-react';
 import type { PayrollApi, Offer } from '@nightshift/api';
+import { explainPayrollFailure } from '../explainPayrollFailure';
 
 interface HireFormProps {
   api: PayrollApi;
@@ -43,9 +44,11 @@ export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
 
       setCreatedOffer(offer);
       onSuccess();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to seal salary commitment.');
+    } catch (error: unknown) {
+      setError(explainPayrollFailure(error).message);
     } finally {
+      // Runs on the wallet-missing path too, so the button never keeps
+      // spinning over a failure the person can already read.
       setLoading(false);
     }
   };
