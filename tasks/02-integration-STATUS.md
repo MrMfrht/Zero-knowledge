@@ -157,18 +157,59 @@ constructing the contract, building contexts, and calling a circuit.
 
 ## ⏳ What is still yours, in priority order
 
-### 1. `MidnightPayrollApi` — the main deliverable
+### 1. ✅ `MidnightPayrollApi` — done, and all three apps run on it
 
-The class that implements `PayrollApi` against the real contract, so C, D and E
-swap the mock for the real thing by changing one line. Nothing else on this list
-matters until this exists.
+Five of the six circuits have now run through the real class against the local
+devnet, in sequence, on a real contract. `payWorker` is the exception and is
+covered below.
 
-Your spec is the ["For B" section of the api README](../packages/api/README.md)
-— method-to-circuit mapping, which error class to throw for each assert failure,
-and your definition of done. **All six circuits now compile**, so nothing needs
-stubbing. `smoke.mjs` exercises the complete lifecycle including every failure
-case — it is your worked example for contexts, state threading between calls
-(`r.context.currentQueryContext.state`), and per-caller private state.
+```bash
+docker compose -f docker/compose.yml up -d
+cd packages/api
+npx tsx src/midnight/deploy.ts --contribution-pct 25       # prints an address
+npx tsx src/midnight/demo-lifecycle.ts --contract <address>
+npx tsx src/midnight/inspect.ts <address>                  # read it back
+```
+
+`demo-lifecycle.ts` drives hire → acceptOffer → approveHours → confirmPayment →
+proveContribution → endEmployment with two identities over one wallet. It
+defaults to 85/h × 160h rather than a flat salary, because `hours != 1` is what
+catches the mistake it was first written with: the circuit pays `hours * rate`,
+not `rate`, and it reads `hours` from where the *employer* put it precisely so a
+worker cannot inflate the claim.
+
+Two things that were needed to make the class runnable outside a browser, both
+narrow and both documented at their definitions:
+
+- `MidnightPayrollApiOptions.storage` — Node has no `window.localStorage`.
+- `connectWithProviders()` — Node tooling builds the six providers over a
+  headless wallet. **Apps must still use `connectWallet()`** so keys stay in the
+  extension. Anything calling `connectWithProviders` is holding a secret key by
+  definition, which is why it is tooling-only.
+
+**Reading periods back** needed `periodKey`, which `payroll.compact` does not
+export — `packages/api/src/midnight/periodKey.ts` reimplements it from the
+compiled bindings and `demo-lifecycle.ts` asserts the round trip, so a drifted
+encoding fails the run instead of quietly reporting "never employed". Exporting
+it from the contract would make that file a one-line re-export; worth doing next
+time the contract is recompiled.
+
+### 1b. ✅ C, D and E are wired to the chain
+
+`createPayrollApi()` in `@nightshift/api` is the only place that chooses mock or
+chain, so the three apps cannot disagree. Set `VITE_CONTRACT_ADDRESS` in an
+app's `.env.local` and it is live; leave it out and it is the mock. Every app
+shows which on screen — see `.env.example` in each app directory.
+
+Verified in a browser against `d2e8d3be…e18a851e`: the auditor board lists the
+worker and their confirmed April 2026 with no wallet at all, the employer
+directory shows 1 confirmed period, and the worker app shows *160 hrs, Confirmed
+Paid, 25% Verified* with the salary reading `[ HIDDEN / NONE ]`.
+
+For the worker app to *be* a worker the scripts hired, `VITE_DEV_DEVICE_SECRET`
+seeds the browser's device secret. It is refused on any network but
+`undeployed` — it overwrites the one value the whole privacy model depends on
+being generated locally, so it exists for the devnet demo and nowhere else.
 
 ### 2. ✅ The deploy script — done, and it works
 
@@ -235,7 +276,15 @@ path mangling, and Docker Desktop's containerd image store unpacking the
 midnight-node image as zero-byte files). Worth reading before you spend an
 afternoon on either.
 
-### 3. Payment confirmation tracking — your honestly-flagged gap
+### 3. `payWorker` — the one circuit still unexercised
+
+It moves real funds through the browser wallet's `sendPrivatePayment`, which
+needs a `ConnectedAPI` that only exists in a page with an extension. Nothing in
+the headless path can stand in for it. `confirmPayment` in `demo-lifecycle.ts`
+is the worker asserting an amount arrived; **no transfer actually happens** in
+that script, and the file header says so rather than implying coverage.
+
+### 4. Payment confirmation tracking — your honestly-flagged gap
 
 `submitTransaction` returns no txId; the `identifiers()` path needs the blob's
 byte encoding, which the docs do not state. You left an explicit `throw` rather
@@ -243,7 +292,7 @@ than guessing — right call. Resolving it needs a real wallet extension
 (Lace / 1AM) to test against. Not urgent: the interface already treats txId as
 optional, so nothing downstream is waiting on this.
 
-### 4. New question, from the storage decision
+### 5. New question, from the storage decision
 
 We decided secrets live in local storage for now
 ([A_docs/05](../A_docs/05-keys-storage-and-identity.md)). The upgrade path ends

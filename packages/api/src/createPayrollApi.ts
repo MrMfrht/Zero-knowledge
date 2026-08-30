@@ -9,15 +9,16 @@
  * The rule is deliberately blunt: **a contract address means the real chain.**
  * There is no `USE_MOCK` flag to leave in the wrong position. If you have
  * pointed an app at a deployed contract, that is what it talks to; remove the
- * address and it falls back to the mock. Which one you got is reported by
- * `describePayrollApi`, and the apps put that on screen — a demo that is
- * quietly running on fixtures is the worst outcome available here.
+ * address and it falls back to the mock. Which one you got comes back on the
+ * returned `PayrollApiDescription`, and all three apps put it on screen — a
+ * demo quietly running on fixtures is the worst outcome available here.
  */
 import type { WorkerKey } from '@nightshift/shared';
 import type { PayrollApi } from './PayrollApi.js';
 import { MockPayrollApi } from './mock/MockPayrollApi.js';
 import { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
 import { NETWORK_IDS, type NetworkId } from './midnight/network.js';
+import { LOCAL_SECRET_STORAGE_KEY } from './midnight/localSecret.js';
 
 export interface PayrollApiConfig {
   /**
@@ -33,6 +34,20 @@ export interface PayrollApiConfig {
    * point of the design, so the mock's demo personas simply do not apply.
    */
   readonly actingAs?: WorkerKey | undefined;
+  /**
+   * Force this browser's device secret to a known value. **Local devnet only.**
+   *
+   * The whole product rests on this secret being generated on the device and
+   * never travelling, so putting one in configuration is precisely the wrong
+   * shape — `createPayrollApi` refuses it on any network but `undeployed`.
+   *
+   * It exists because a demo needs the worker app to *be* the worker the
+   * headless scripts hired, and a browser that just generated its own fresh
+   * secret is correctly a stranger to that contract: it shows an empty
+   * history, which looks like a bug and is not. The alternative is hiring
+   * from the employer app, which needs a wallet extension to sign.
+   */
+  readonly devSeedDeviceSecretHex?: string | undefined;
 }
 
 /** What was actually built, for the app to show the user. */
@@ -67,7 +82,11 @@ export function payrollApiConfigFromEnv(env: Record<string, unknown>): PayrollAp
     );
   }
 
-  return { contractAddress, networkId: networkId as NetworkId | undefined };
+  return {
+    contractAddress,
+    networkId: networkId as NetworkId | undefined,
+    devSeedDeviceSecretHex: asNonEmptyString(env.VITE_DEV_DEVICE_SECRET),
+  };
 }
 
 export function createPayrollApi(config: PayrollApiConfig = {}): PayrollApiDescription {
@@ -88,6 +107,30 @@ export function createPayrollApi(config: PayrollApiConfig = {}): PayrollApiDescr
   }
 
   const networkId = config.networkId ?? 'undeployed';
+
+  const seed = asNonEmptyString(config.devSeedDeviceSecretHex);
+  if (seed) {
+    if (networkId !== 'undeployed') {
+      throw new Error(
+        `VITE_DEV_DEVICE_SECRET is set while pointing at "${networkId}". It overwrites this ` +
+          "browser's device secret — the one value the entire privacy model depends on being " +
+          'generated locally and never shared. It is permitted only against a throwaway local ' +
+          'devnet. Remove it, or point at undeployed.',
+      );
+    }
+    if (!/^[0-9a-fA-F]{64}$/.test(seed)) {
+      throw new Error('VITE_DEV_DEVICE_SECRET must be exactly 64 hex characters (32 bytes).');
+    }
+    // Deliberately overwrites: the point is to make this browser be a
+    // specific worker, and honouring an existing secret would mean the flag
+    // silently did nothing on the second page load.
+    window.localStorage.setItem(LOCAL_SECRET_STORAGE_KEY, seed.toLowerCase());
+    console.warn(
+      'VITE_DEV_DEVICE_SECRET overwrote this device secret. Devnet only — never set this ' +
+        'anywhere real.',
+    );
+  }
+
   return {
     api: new MidnightPayrollApi({ contractAddress, networkId }),
     live: true,
