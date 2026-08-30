@@ -13,7 +13,17 @@
  * message is careful to say the outcome is unknown rather than claiming
  * nothing happened.
  */
-export const WRITE_TIMEOUT_MS = 90_000;
+/**
+ * Generous on purpose. A write blocks on human approval -- Lace raises a
+ * separate OS window per step (one to unlock, another to prove), and finding
+ * a window that opened behind the browser takes as long as it takes. Proving
+ * itself is fast, around 1.5s against the local proof server, so almost all
+ * of this budget is waiting for a person, not for a machine.
+ *
+ * The first version of this was 90s and would have aborted a write that was
+ * only ever waiting for a popup the person had not seen yet.
+ */
+export const WRITE_TIMEOUT_MS = 300_000;
 
 export class WriteTimeoutError extends Error {
   override readonly name = 'WriteTimeoutError';
