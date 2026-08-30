@@ -78,3 +78,7 @@ export {
   rememberOffer,
 } from './midnight/offerVault.js';
 export type { RememberedOffer } from './midnight/offerVault.js';
+
+// Devnet convenience: a hired worker key can never be hired again, so
+// demoing the flow twice needs an identity with no history.
+export { regenerateLocalSecret } from './midnight/localSecret.js';

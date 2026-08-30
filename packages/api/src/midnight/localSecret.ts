@@ -41,3 +41,25 @@ export function getOrCreateLocalSecret(storage: Storage = window.localStorage): 
   storage.setItem(STORAGE_KEY, bytesToHex(secret).slice(2));
   return secret;
 }
+
+/**
+ * Replace this device's secret with a fresh one, becoming a different person
+ * on every contract at once.
+ *
+ * There is no "add an identity" here, because identity is not a record the
+ * app keeps -- it is `dappKey(localSk(), deploymentId)`, computed from this
+ * one secret. Overwrite the secret and every key derived from it is gone,
+ * along with any employment, approved hours or confirmed payments that were
+ * recorded against them. Nothing on chain is deleted; it simply belongs to
+ * someone this browser can no longer prove it is.
+ *
+ * That makes this a devnet convenience, not a feature: a hired worker key can
+ * never be hired again (`hire` asserts `!agreedRate.member(w)`), so demoing
+ * the flow twice needs a worker with no history, and generating one is
+ * cheaper than editing an env file and restarting a dev server.
+ */
+export function regenerateLocalSecret(storage: Storage = window.localStorage): Uint8Array {
+  const secret = randomSecret();
+  storage.setItem(STORAGE_KEY, bytesToHex(secret).slice(2));
+  return secret;
+}

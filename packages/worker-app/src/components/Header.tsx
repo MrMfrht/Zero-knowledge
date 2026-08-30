@@ -1,6 +1,7 @@
 import React from 'react';
 import { usePayroll, PERSONAS } from '../context/PayrollContext.tsx';
-import { ShieldCheck, RotateCcw, User, Sparkles, Wallet } from 'lucide-react';
+import { ShieldCheck, RotateCcw, User, Sparkles, Wallet, UserPlus } from 'lucide-react';
+import { regenerateLocalSecret } from '@nightshift/api';
 
 export const Header: React.FC = () => {
   const {
@@ -17,6 +18,30 @@ export const Header: React.FC = () => {
     connectWallet,
     disconnectWallet,
   } = usePayroll();
+
+  /**
+   * Reloads rather than re-rendering. Identity is read once, at construction,
+   * by `MidnightPayrollApi` and by the contract's `localSk()` witness; a
+   * live-swapped secret would leave the page holding providers and cached
+   * reads belonging to the previous person.
+   */
+  const newIdentity = () => {
+    const confirmed = window.confirm(
+      [
+        'Generate a new identity?',
+        '',
+        'This browser gets a fresh secret, so you become a different worker on chain.',
+        'Any employment, approved hours or payments recorded against your current',
+        'identity stay on chain but stop being yours — this device will no longer be',
+        'able to prove it is that person.',
+        '',
+        'Devnet only.',
+      ].join(String.fromCharCode(10)),
+    );
+    if (!confirmed) return;
+    regenerateLocalSecret();
+    window.location.reload();
+  };
 
   return (
     <header className="glass-card app-header">
@@ -97,6 +122,23 @@ export const Header: React.FC = () => {
           >
             <Wallet size={14} />
             {walletBusy ? 'Connecting…' : walletConnected ? 'Wallet Connected' : 'Connect Wallet'}
+          </button>
+        )}
+
+        {/*
+          Devnet only, and gated on that rather than merely hidden: a hired
+          worker key can never be hired again, so running the demo twice needs
+          an identity with no history. Against a real network this button
+          would be a way to silently abandon your own employment record.
+        */}
+        {live && import.meta.env.VITE_NETWORK_ID === 'undeployed' && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={newIdentity}
+            title="Devnet only. Replaces this browser's secret — you become a different worker and lose access to this one's history."
+          >
+            <UserPlus size={14} />
+            New Identity
           </button>
         )}
 
