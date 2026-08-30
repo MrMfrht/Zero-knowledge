@@ -95,6 +95,7 @@ export class MidnightPayrollApi implements PayrollApi {
   private connection: WalletConnection | undefined;
   private writeProviders: PayrollProviders | undefined;
   private foundContract: FoundContract<PayrollContract> | undefined;
+  private cachedDeploymentId: Uint8Array | undefined;
 
   constructor(options: MidnightPayrollApiOptions) {
     this.contractAddress = options.contractAddress;
@@ -108,7 +109,23 @@ export class MidnightPayrollApi implements PayrollApi {
   // ---------------------------------------------------------------------
 
   async getMyKey(): Promise<WorkerKey> {
-    return bytesToHex(pureCircuits.dappKey(this.secret));
+    return bytesToHex(pureCircuits.dappKey(this.secret, await this.deploymentId()));
+  }
+
+  /**
+   * The 32 random bytes fixed when this contract was deployed. Every identity
+   * is hashed with them, so one person gets an unrelated key from each employer
+   * and two employers cannot join their public ledgers to find a shared worker.
+   *
+   * Cached because it is sealed on-chain: it cannot change for this address, so
+   * re-reading it on every `getMyKey()` would be a network round trip for a
+   * constant.
+   */
+  private async deploymentId(): Promise<Uint8Array> {
+    if (!this.cachedDeploymentId) {
+      this.cachedDeploymentId = (await this.readLedger()).deploymentId;
+    }
+    return this.cachedDeploymentId;
   }
 
   // ---------------------------------------------------------------------

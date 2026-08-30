@@ -209,16 +209,23 @@ async function main(): Promise<void> {
     midnightProvider: walletAndMidnightProvider,
   };
 
-  // The deployer's OWN `localSk()` — becomes `employerKey` in the
-  // constructor (`employerKey = dappKey(localSk())`, per payroll.compact).
+  // The deployer's OWN `localSk()` — becomes `employerKey` in the constructor
+  // (`employerKey = dappKey(localSk(), deployment)`, per payroll.compact).
   // Deliberately distinct from the wallet's shielded/unshielded keys: this
   // secret only ever identifies the caller inside this contract.
   const deployerSecret = new Uint8Array(Buffer.from(args.seedHex, 'hex')).slice(0, 32);
 
+  // Fresh randomness, every single deployment. This becomes the sealed
+  // `deploymentId`, and every identity on this contract is hashed with it, so
+  // one worker gets an unrelated key from each employer. Reusing a value across
+  // deployments — or hardcoding one — makes the same worker look identical in
+  // two employers' ledgers, which is exactly the leak it exists to prevent.
+  const deployment = crypto.getRandomValues(new Uint8Array(32));
+
   console.log(`Deploying with contributionPct=${args.contributionPct}...`);
   const deployed = await deployContract(providers, {
     compiledContract: compiledPayrollContract,
-    args: [args.contributionPct],
+    args: [args.contributionPct, deployment],
     privateStateId: PAYROLL_PRIVATE_STATE_ID,
     initialPrivateState: createPayrollPrivateState(deployerSecret),
   } as never);
