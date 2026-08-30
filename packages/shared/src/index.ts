@@ -175,7 +175,7 @@ export function comparePeriods(a: Period, b: Period): number {
 // Design Tokens (for styling)
 // ---------------------------------------------------------------------------
 
-export { designTokens } from './design-tokens';
-export type { DesignTokens } from './design-tokens';
+export { designTokens } from './design-tokens.js';
+export type { DesignTokens } from './design-tokens.js';
 
 // CSS: import '@nightshift/shared/globals.css' in each app's main.tsx
