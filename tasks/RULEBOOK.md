@@ -22,7 +22,11 @@ Only the two people who compile smart contracts need WSL. Everyone else works no
 
 New here? Start with [COMMON.md](COMMON.md), then open your own file.
 
-Want to understand *why* any of this works — salts, commitments, zero-knowledge, in plain language? **[01-contract-EXPLAINED.md](01-contract-EXPLAINED.md)**. Written for A, useful to everyone.
+**Two folders are not your scope unless they are yours:** `A_docs/` is deep contract
+detail for A, `D_docs/` is the backend plan for D. Ignore them otherwise — your task
+file and [packages/api/README.md](../packages/api/README.md) are everything you need.
+
+Want to understand *why* any of this works — salts, commitments, zero-knowledge, in plain language? **[01-contract-EXPLAINED.md](../A_docs/01-understanding-the-contract.md)**. Written for A, useful to everyone.
 
 Before the demo, everyone reads **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)** — the questions judges actually ask, honest answers, and who on the team answers what.
 

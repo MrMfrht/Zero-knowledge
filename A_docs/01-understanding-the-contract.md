@@ -1,6 +1,6 @@
 # Understanding the contract — from zero
 
-*For A, and for anyone who wants to understand what we are actually building. No blockchain knowledge assumed. Read this before [01-contract.md](01-contract.md), which is the practical checklist.*
+*For A, and for anyone who wants to understand what we are actually building. No blockchain knowledge assumed. Read this before [01-contract.md](../tasks/01-contract.md), which is the practical checklist.*
 
 ---
 
@@ -495,7 +495,7 @@ export circuit proveContribution(period: Uint<32>, declared: Uint<64>,
 }
 ```
 
-Why `declared * 100 == rate * pct` instead of `declared == rate * pct / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md). Multiplying both sides by 100 says the same thing without dividing.
+Why `declared * 100 == rate * pct` instead of `declared == rate * pct / 100`? **Because Compact has no division operator at all** — we found this out by compiling it, and it is written up in [SPIKE-ARITHMETIC.md](04-compact-arithmetic.md). Multiplying both sides by 100 says the same thing without dividing.
 
 The power here comes from *when* the commitment was made: at hiring, before anyone had a reason to lie.
 
@@ -565,8 +565,8 @@ That fourth one is not decoration. When a judge asks *"why is the salary a commi
 
 If you can say that in your own words, you can do this job.
 
-More of these — including the hard ones like *"why not just use a database?"* — are in **[JUDGE-QUESTIONS.md](JUDGE-QUESTIONS.md)**. A owns the questions about circuits, commitments, and why this is not a database.
+More of these — including the hard ones like *"why not just use a database?"* — are in **[JUDGE-QUESTIONS.md](../tasks/JUDGE-QUESTIONS.md)**. A owns the questions about circuits, commitments, and why this is not a database.
 
 ---
 
-*Practical checklist and setup: [01-contract.md](01-contract.md) · Arithmetic findings: [SPIKE-ARITHMETIC.md](../packages/contract/SPIKE-ARITHMETIC.md) · Full design: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md)*
+*Practical checklist and setup: [01-contract.md](../tasks/01-contract.md) · Arithmetic findings: [SPIKE-ARITHMETIC.md](04-compact-arithmetic.md) · Full design: [NightShift build plan](../Ideas/NightShift_Private_Payroll_Midnight.md)*

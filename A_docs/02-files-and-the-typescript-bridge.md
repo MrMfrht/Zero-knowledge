@@ -1,7 +1,7 @@
 # Circuit 1: `hire` — what every file is, and how the two languages connect
 
 *Written for someone who does not code. If you have read
-[tasks/01-contract-EXPLAINED.md](../../tasks/01-contract-EXPLAINED.md), you know
+[tasks/01-contract-EXPLAINED.md](01-understanding-the-contract.md), you know
 what a commitment and a circuit are. This document is about the **machinery**:
 which file is which, why there are two programming languages, and what actually
 happens when an employer clicks "Hire".*
@@ -420,5 +420,5 @@ does, and a proof can be verified without being opened.
 
 ---
 
-*Next: [circuit 2, `acceptHire`](../../tasks/01-contract.md) — where Karim checks
+*Next: [circuit 2, `acceptHire`](../tasks/01-contract.md) — where Karim checks
 that the sealed number really is the 5,000 he was promised.*
