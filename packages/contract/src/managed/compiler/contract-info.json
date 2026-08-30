@@ -54,6 +54,39 @@
         "types": [
         ]
       }
+    },
+    {
+      "name": "approveHours",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "worker",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "period",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        },
+        {
+          "name": "hours",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
     }
   ],
   "witnesses": [
@@ -95,8 +128,22 @@
       }
     },
     {
-      "name": "active",
+      "name": "approvedHours",
       "index": 2,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Uint",
+        "maxval": 4294967295
+      }
+    },
+    {
+      "name": "active",
+      "index": 3,
       "exported": true,
       "storage": "Map",
       "key": {

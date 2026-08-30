@@ -11,6 +11,10 @@ export type ImpureCircuits<PS> = {
   acceptHire(context: __compactRuntime.CircuitContext<PS>,
              rate_0: bigint,
              salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  approveHours(context: __compactRuntime.CircuitContext<PS>,
+               worker_0: Uint8Array,
+               period_0: bigint,
+               hours_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -20,6 +24,10 @@ export type ProvableCircuits<PS> = {
   acceptHire(context: __compactRuntime.CircuitContext<PS>,
              rate_0: bigint,
              salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  approveHours(context: __compactRuntime.CircuitContext<PS>,
+               worker_0: Uint8Array,
+               period_0: bigint,
+               hours_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -32,6 +40,10 @@ export type Circuits<PS> = {
   acceptHire(context: __compactRuntime.CircuitContext<PS>,
              rate_0: bigint,
              salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
+  approveHours(context: __compactRuntime.CircuitContext<PS>,
+               worker_0: Uint8Array,
+               period_0: bigint,
+               hours_0: bigint): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {
@@ -42,6 +54,13 @@ export type Ledger = {
     member(key_0: Uint8Array): boolean;
     lookup(key_0: Uint8Array): Uint8Array;
     [Symbol.iterator](): Iterator<[Uint8Array, Uint8Array]>
+  };
+  approvedHours: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(key_0: Uint8Array): boolean;
+    lookup(key_0: Uint8Array): bigint;
+    [Symbol.iterator](): Iterator<[Uint8Array, bigint]>
   };
   active: {
     isEmpty(): boolean;

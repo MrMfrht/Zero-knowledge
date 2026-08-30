@@ -25,6 +25,16 @@ export sealed ledger employerKey: Bytes<32>;
 /// and not a salary. Publishing this map tells an observer nothing.
 export ledger agreedRate: Map<Bytes<32>, Bytes<32>>;
 
+/// H(workerKey, period) -> hours the employer approved for that period
+///
+/// Hours are public ON PURPOSE. The employer already knows them, and hours
+/// alone reveal nothing about pay — only the rate is sensitive. This is what
+/// selective disclosure means in practice: hide exactly what needs hiding.
+///
+/// Salaried workers use 1, so `1 x rate = rate`. One circuit covers hourly,
+/// salaried and fixed-price work.
+export ledger approvedHours: Map<Bytes<32>, Uint<32>>;
+
 /// workerKey -> is this person currently employed?
 ///
 /// Three states, deliberately:
@@ -48,6 +58,18 @@ witness localSk(): Bytes<32>;
 /// here cannot be linked to their activity elsewhere.
 pure circuit dappKey(sk: Bytes<32>): Bytes<32> {
     return persistentHash<Vector<2, Bytes<32>>>([pad(32, "nightshift:pk:"), sk]);
+}
+
+/// One worker, one period — a single key for the `approvedHours` map.
+///
+/// A `Map` takes one key, but a timesheet is identified by two things. Hashing
+/// them together gives one 32-byte value that is unique to the pair.
+///
+/// The domain separator differs from `dappKey`'s, so a period key can never
+/// collide with an identity key.
+pure circuit periodKey(worker: Bytes<32>, period: Uint<32>): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>(
+        [pad(32, "nightshift:period:"), worker, period as Bytes<32>]);
 }
 /// This is the answer to your ownPublicKey() question in code. We never ask "who are you?" We compute the hash of your secret and compare. To pass as the employer you'd need a secret whose hash equals employerKey — which means reversing a hash.
 
@@ -104,4 +126,25 @@ export circuit acceptHire(rate: Uint<64>, salt: Bytes<32>): [] {
            "the sealed rate does not match the rate and salt you were given");
 
     active.insert(k, true);
+}
+
+/// The employer approves a timesheet, which unlocks that period for payment.
+///
+/// Runs on the EMPLOYER's machine, using the EMPLOYER's secret — unlike
+/// `acceptHire`, which runs on the worker's. `localSk()` always means "the
+/// secret of whoever is calling right now".
+///
+/// Hours go on the public ledger deliberately. The employer already knows them,
+/// and hours alone say nothing about pay. Pass 1 for salaried workers.
+///
+/// Approving is a precondition for `confirmPayment`: a worker cannot confirm a
+/// period the employer has not signed off.
+export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>): [] {
+    assert(dappKey(localSk()) == employerKey, "only the employer may approve hours");
+
+    const w = disclose(worker);
+    assert(active.member(w), "this worker has not accepted an offer");
+    assert(active.lookup(w), "this worker's employment has ended");
+
+    approvedHours.insert(disclose(periodKey(w, period)), disclose(hours));
 }
