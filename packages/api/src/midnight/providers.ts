@@ -77,14 +77,31 @@ function buildWalletAndMidnightProvider(connectedApi: ConnectedAPI): WalletProvi
     async submitTx(tx: FinalizedTransaction): Promise<TransactionId> {
       const hex = toHex(tx.serialize());
       await connectedApi.submitTransaction(hex);
-      // submitTransaction resolves to void (see payment.ts) — there is no
-      // txId the wallet hands back. tx.transactionHash() is what ledger-v8
-      // itself warns not to use for watching a specific transaction "due to
-      // the ability to merge transactions", but as the identifier for
-      // FinalizedCallTxData.public.txId there is nothing better available
-      // from this API surface, so it is returned as a best-effort id, not a
-      // confirmation guarantee.
-      return tx.transactionHash() as unknown as TransactionId;
+
+      // What this returns is not cosmetic: midnight-js-contracts does
+      //
+      //   const txId = await submitTxCore(...)
+      //   return providers.publicDataProvider.watchForTxData(txId)
+      //
+      // so an id the indexer never reports means a write that lands on chain
+      // and a promise that never settles. That is precisely how the first
+      // browser hire behaved — sealed into `agreedRate`, spinner turning
+      // forever.
+      //
+      // `submitTransaction` resolves to `void`, so the id has to come from
+      // the transaction itself, and ledger-v8 is explicit about which one:
+      // `transactionHash()` "should not be used to watch for a specific
+      // transaction" because transactions can be merged, while
+      // `identifiers()` returns the set that "may be used to watch for a
+      // specific transaction" (ledger-v8.d.ts). Take the first.
+      const [identifier] = tx.identifiers();
+      if (!identifier) {
+        throw new Error(
+          'The wallet accepted this transaction but it carries no identifier to watch for, ' +
+            'so its confirmation can never be observed. Check the chain directly before retrying.',
+        );
+      }
+      return identifier as unknown as TransactionId;
     },
   };
 }
