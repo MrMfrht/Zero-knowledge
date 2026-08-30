@@ -12,125 +12,137 @@
   }
   * { box-sizing: border-box; margin: 0; }
   body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; padding: 32px; }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 12px; }
-  h1 .badge { font-size: .7rem; background: #1e2b45; color: var(--cyan); border: 1px solid #234; padding: 3px 10px; border-radius: 99px; letter-spacing: .08em; }
+  .wrap { max-width: 1150px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .badge { font-size: .7rem; background: #1e2b45; color: var(--cyan); border: 1px solid #234; padding: 3px 10px; border-radius: 99px; letter-spacing: .08em; }
+  .badge.live { color: var(--green); border-color: #1c3; animation: pulse 2s infinite; }
+  .badge.dead { color: var(--rose); }
+  @keyframes pulse { 50% { opacity: .55; } }
   .sub { color: var(--dim); margin: 6px 0 24px; }
   .grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
   .panel h2 { font-size: .95rem; margin-bottom: 12px; color: var(--indigo); letter-spacing: .04em; }
-  textarea { width: 100%; height: 120px; background: var(--panel2); color: var(--dim); border: 1px solid var(--border); border-radius: 8px; font-family: var(--mono); font-size: .75rem; padding: 10px; resize: vertical; }
-  button { background: var(--indigo); color: #0a0e17; font-weight: 600; border: 0; border-radius: 8px; padding: 8px 18px; margin-top: 10px; cursor: pointer; font-size: .85rem; }
-  button:hover { filter: brightness(1.1); }
-  pre.log { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 18px; font-family: var(--mono); font-size: .8rem; line-height: 1.65; overflow-x: auto; white-space: pre; }
-  .hex { color: var(--cyan); } .commit { color: var(--rose); } .map { color: var(--indigo); font-weight: 600; }
-  .true { color: var(--green); font-weight: 700; } .false { color: var(--amber); }
-  .num { color: var(--green); } .head { color: var(--dim); }
+  #feed { display: flex; flex-direction: column; gap: 8px; max-height: 560px; overflow-y: auto; }
+  .entry { display: grid; grid-template-columns: 92px 150px 1fr; gap: 14px; align-items: baseline;
+           background: var(--panel2); border: 1px solid var(--border); border-left: 3px solid var(--circ, var(--dim));
+           border-radius: 8px; padding: 10px 14px; font-size: .82rem; }
+  .entry .blk { font-family: var(--mono); color: var(--dim); font-size: .75rem; }
+  .entry .circ { font-family: var(--mono); font-weight: 700; color: var(--circ, var(--text)); }
+  .entry .what { color: var(--dim); }
+  .entry.fresh { animation: land .6s ease-out; }
+  @keyframes land { from { background: #16324a; } }
   .legend div { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: .8rem; align-items: baseline; }
   .legend div:last-child { border: 0; }
   .legend code { font-family: var(--mono); color: var(--indigo); white-space: nowrap; min-width: 118px; }
   .legend span { color: var(--dim); }
   .legend b { color: var(--text); font-weight: 600; }
   .claim { margin-top: 20px; border-left: 3px solid var(--green); padding: 12px 16px; background: #0e1a14; border-radius: 0 8px 8px 0; font-size: .85rem; color: #a7d9c3; }
-  .how { font-size: .75rem; color: var(--dim); margin-top: 10px; font-family: var(--mono); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>⛓ On-Chain Circuit Evidence <span class="badge">MIDNIGHT · LOCAL DEVNET</span></h1>
-  <p class="sub">The raw ledger state of the NightShift payroll contract. Every row below was written by a
-    zero-knowledge circuit executing on chain — and the salary amounts are nowhere on this page, because they are nowhere on the chain.</p>
+  <h1>⛓ On-Chain Circuit Evidence
+    <span class="badge">MIDNIGHT · LOCAL DEVNET</span>
+    <span class="badge" id="conn">CONNECTING…</span>
+  </h1>
+  <p class="sub">Every zero-knowledge circuit execution against the NightShift payroll contract, streamed live from the
+    chain indexer. The circuit <i>names</i> are public — the salaries they operate on never are: not one appears
+    anywhere on this page, because not one exists anywhere on the chain.</p>
 
   <div class="grid">
     <div>
       <div class="panel">
-        <h2>LEDGER STATE</h2>
-        <pre class="log" id="log"></pre>
-        <div class="claim" id="claim"></div>
-      </div>
-      <div class="panel" style="margin-top:20px">
-        <h2>UPDATE — PASTE A FRESH DUMP</h2>
-        <textarea id="paste" placeholder="npm run -w @nightshift/api inspect  →  paste the output here"></textarea>
-        <button onclick="render(document.getElementById('paste').value)">Render</button>
-        <div class="how">npx tsx src/midnight/inspect.ts &lt;contract-address&gt; &nbsp;(from packages/api)</div>
+        <h2>CIRCUIT EXECUTION LOG — <span id="count">0</span> TRANSACTIONS</h2>
+        <div id="feed"></div>
+        <div class="claim">🔒 Each row is a real transaction whose proof was generated on the calling
+          person&rsquo;s own device. The chain verified the proof; it never saw the numbers.</div>
       </div>
     </div>
 
     <div class="panel legend">
-      <h2>WHICH CIRCUIT WROTE WHAT</h2>
-      <div><code>agreedRate</code><span><b>hire</b> — the employer seals a salary commitment. The value shown is a hash; the rate and salt that open it never touch the chain.</span></div>
-      <div><code>active → true</code><span><b>acceptHire</b> — the worker proves, in zero knowledge, that they hold the exact rate and salt behind their commitment.</span></div>
-      <div><code>approvedHours</code><span><b>approveHours</b> — public on purpose: both parties already know the hours. The row key is a hash of worker + period.</span></div>
-      <div><code>paidFor</code><span><b>confirmPayment</b> — the worker proves <i>amount received = hours × sealed rate</i> without revealing any of the three numbers.</span></div>
-      <div><code>contributionOk</code><span><b>proveContribution</b> — proves the social-security declaration was computed on real earnings, revealing neither.</span></div>
-      <div><code>active → false</code><span><b>endEmployment</b> — the employer ends the relationship; the payment history stays verifiable forever.</span></div>
+      <h2>WHAT EACH CIRCUIT PROVES</h2>
+      <div><code>hire</code><span><b>employer</b> seals a salary commitment — the chain stores a hash; the rate and salt that open it never leave the employer&rsquo;s device.</span></div>
+      <div><code>acceptHire</code><span><b>worker</b> proves, in zero knowledge, that they hold the exact rate and salt behind their commitment.</span></div>
+      <div><code>approveHours</code><span><b>employer</b> publishes hours worked — public on purpose; both parties already know them.</span></div>
+      <div><code>confirmPayment</code><span><b>worker</b> proves <i>amount received = hours × sealed rate</i> — none of the three numbers is revealed.</span></div>
+      <div><code>proveContribution</code><span><b>worker</b> proves the social-security declaration was computed on real earnings, revealing neither.</span></div>
+      <div><code>endEmployment</code><span><b>employer</b> ends the relationship; the payment history stays publicly verifiable forever.</span></div>
     </div>
   </div>
 </div>
 
 <script>
-const SEED = `Contract d2e8d3be9b5c50fac34a4d2f1731eb16df1b10239bd0f28ba22323f1e18a851e on undeployed
+const CONTRACT = 'd2e8d3be9b5c50fac34a4d2f1731eb16df1b10239bd0f28ba22323f1e18a851e';
+// The local devnet indexer serves v3, not v4 — v4 here would 404.
+const WS_URL = 'ws://localhost:8088/api/v3/graphql/ws';
 
---- sealed at deployment, never changes ---
-employerKey     1ed92f3c5ca49968720b34e7983ecbda5e22f0b65cd4c445168702bc8c05f18e
-deploymentId    248ef2b4a7a450825adc61c3c69de5fb01990cf0fac5e0958e30f7b9a9267d10
-contributionRate 25%
+const CIRCUITS = {
+  deploy:            { color: 'var(--cyan)',   what: 'contract deployed — employer key and deployment id sealed forever' },
+  hire:              { color: 'var(--indigo)', what: 'salary commitment sealed on-chain (hash only — the rate is nowhere)' },
+  acceptHire:        { color: 'var(--green)',  what: 'worker proved knowledge of the sealed rate + salt — ZK proof verified' },
+  approveHours:      { color: 'var(--amber)',  what: 'employer published verified hours for a pay period (public by design)' },
+  confirmPayment:    { color: 'var(--green)',  what: 'worker proved amount received = hours × sealed rate — THE PRODUCT' },
+  proveContribution: { color: 'var(--green)',  what: 'worker proved the pension declaration matches real earnings' },
+  endEmployment:     { color: 'var(--rose)',   what: 'employment ended — history stays verifiable, rate stays sealed' },
+};
 
---- per-worker, public ---
+const feed = document.getElementById('feed');
+const conn = document.getElementById('conn');
+let count = 0;
 
-agreedRate (commitments — must look like noise) (4 entries)
-  f9fb3ff92c8376c06573ba3c4ffa2c120748cc5e49e619fea0204916e4d1ca9d -> 8795b435adcded26595429795c1d46cd1d7b545d64708378fbb4812588c0fcd8
-  1a8878d77fd5ffefbef6b196b009b1ed03ccf7611335daa61569a454c9c3e975 -> eda92f2592abbb419ded846d352a6137799ca9bfaf5d19a96a695e5aa438a513
-  954c780dc5678a7df09c526e96589d2251e16279ae00c302bc4a6af67d617058 -> 807b5c1b7429e2a5796777885066dd7400ebd593cc005acb09a8772055d39a36
-  aba8079f45356da8bec54c47bbd091a7988cb80e688822eaa80e0c561f20682a -> e94bf49615d4526b4107321e437702c944962220081f70b29491436469d33531
-
-approvedHours (2 entries)
-  b907f112c68d8ca4a7a83f5299e0bc867081c50208bf9187f8642255039ee3e8 -> 160
-  4f702d51db6f1643c6bf9d5fd8eaebbb075e53a6d6adf6b23daf408c0b8ace96 -> 160
-
-contributionOk (1 entry)
-  b907f112c68d8ca4a7a83f5299e0bc867081c50208bf9187f8642255039ee3e8 -> true
-
-paidFor (1 entry)
-  b907f112c68d8ca4a7a83f5299e0bc867081c50208bf9187f8642255039ee3e8 -> true
-
-active (2 entries)
-  954c780dc5678a7df09c526e96589d2251e16279ae00c302bc4a6af67d617058 -> false
-  aba8079f45356da8bec54c47bbd091a7988cb80e688822eaa80e0c561f20682a -> true
-
---- decoded per-worker history (probed, see periodKey.ts) ---
-
-0x954c780dc5678a7df09c526e96589d2251e16279ae00c302bc4a6af67d617058  active=false
-  2026-04  160h  [confirmed]  contribution=true
-
-0xaba8079f45356da8bec54c47bbd091a7988cb80e688822eaa80e0c561f20682a  active=true
-  2026-04  160h  [awaiting-confirmation]  contribution=false`;
-
-function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-// Colour, never parse: a dump this page cannot read still renders verbatim.
-function highlight(text) {
-  return esc(text)
-    .replace(/^(---.*---)$/gm, '<span class="head">$1</span>')
-    .replace(/^(agreedRate|approvedHours|contributionOk|paidFor|active|employerKey|deploymentId|contributionRate)/gm, '<span class="map">$1</span>')
-    .replace(/-&gt; ([0-9a-f]{64})/g, '-&gt; <span class="commit">$1</span>')
-    .replace(/(0x)?([0-9a-f]{64})/g, '<span class="hex">$1$2</span>')
-    .replace(/\btrue\b/g, '<span class="true">true</span>')
-    .replace(/\bfalse\b/g, '<span class="false">false</span>')
-    .replace(/\b(\d+h?|\d+%|\[confirmed\])\b/g, '<span class="num">$1</span>')
-    .replace(/\[awaiting-confirmation\]/g, '<span class="false">[awaiting-confirmation]</span>');
+function addEntry(height, ts, name, fresh) {
+  const info = CIRCUITS[name] ?? { color: 'var(--dim)', what: 'contract action' };
+  const el = document.createElement('div');
+  el.className = 'entry' + (fresh ? ' fresh' : '');
+  el.style.setProperty('--circ', info.color);
+  const when = ts ? new Date(ts).toLocaleTimeString() : '';
+  el.innerHTML = '<span class="blk">#' + height + ' ' + when + '</span>' +
+    '<span class="circ">' + name + '</span>' +
+    '<span class="what">' + info.what + '</span>';
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+  document.getElementById('count').textContent = String(++count);
 }
 
-function render(text) {
-  const t = (text || '').trim() || SEED;
-  document.getElementById('log').innerHTML = highlight(t);
-  const commits = (t.match(/-> [0-9a-f]{64}/g) || []).length;
-  document.getElementById('claim').textContent =
-    '🔒 ' + commits + ' sealed salary commitment' + (commits === 1 ? '' : 's') +
-    ' on this ledger. Not one salary figure appears above — every amount was verified inside a zero-knowledge proof on the worker’s own device.';
+// Raw graphql-transport-ws — 30 lines beats shipping a client library into a
+// static page. The subscription replays from height 0, so history and live
+// tail come through the same pipe.
+let backoff = 1000;
+function connect() {
+  const ws = new WebSocket(WS_URL, 'graphql-transport-ws');
+  const startedEmpty = count === 0;
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'connection_init' }));
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'connection_ack') {
+      backoff = 1000;
+      conn.textContent = '● LIVE'; conn.className = 'badge live';
+      ws.send(JSON.stringify({ id: '1', type: 'subscribe', payload: {
+        query: 'subscription($a: HexEncoded!){ contractActions(address:$a, offset:{height:0}){ __typename ... on ContractCall { entryPoint } transaction { block { height timestamp } } } }',
+        variables: { a: CONTRACT },
+      }}));
+    } else if (msg.type === 'next') {
+      const act = msg.payload?.data?.contractActions;
+      if (!act) return;
+      // A reconnect replays everything; only a feed built in this connection
+      // may append, or every entry would double.
+      if (!startedEmpty && act.transaction.block.height <= lastHeight) return;
+      lastHeight = act.transaction.block.height;
+      const name = act.__typename === 'ContractDeploy' ? 'deploy' : (act.entryPoint ?? act.__typename);
+      addEntry(act.transaction.block.height, act.transaction.block.timestamp, name, count > 0 && Date.now() - loadTime > 3000);
+    }
+  };
+  ws.onclose = () => {
+    conn.textContent = 'RECONNECTING…'; conn.className = 'badge dead';
+    setTimeout(connect, backoff);
+    backoff = Math.min(backoff * 2, 15000);
+  };
+  ws.onerror = () => ws.close();
 }
-render('');
+let lastHeight = -1;
+const loadTime = Date.now();
+connect();
 </script>
 </body>
 </html>
