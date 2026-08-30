@@ -22,9 +22,9 @@
  * running it for real is the next step once those keys exist.
  */
 import { WebSocket } from 'ws';
-// Must happen before any wallet-sdk import triggers a GraphQL subscription.
-// @ts-expect-error -- Node has no global WebSocket; wallet sync needs one.
-globalThis.WebSocket = WebSocket;
+// Must happen before any wallet-sdk import triggers a GraphQL subscription —
+// Node has no global WebSocket, but wallet sync needs one (skill §5).
+globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
 
 import * as Rx from 'rxjs';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -33,9 +33,10 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { DustSecretKey, Intent, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { DustSecretKey, Intent, Transaction as ProtocolTransaction, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Signature } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { WalletProvider, MidnightProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { UnboundTransaction, WalletProvider, MidnightProvider } from '@midnight-ntwrk/midnight-js-types';
+import { Transaction as WalletTransaction } from '@midnight-ntwrk/ledger-v8';
 import { FluentWalletBuilder } from '@midnight-ntwrk/testkit-js';
 import {
   PAYROLL_PRIVATE_STATE_ID,
@@ -91,12 +92,13 @@ function signTransactionIntents(
   for (const segment of tx.intents.keys()) {
     const intent = tx.intents.get(segment) as {
       serialize(): Uint8Array;
+      signatureData(segment: number): Uint8Array;
       fallibleUnshieldedOffer?: { inputs: unknown[]; signatures: { at(i: number): Signature | undefined }; addSignatures(sigs: Signature[]): unknown };
       guaranteedUnshieldedOffer?: { inputs: unknown[]; signatures: { at(i: number): Signature | undefined }; addSignatures(sigs: Signature[]): unknown };
     };
     if (!intent) continue;
     const cloned = Intent.deserialize('signature', proofMarker, 'pre-binding', intent.serialize()) as typeof intent;
-    const signature = signFn(cloned.signatureData ? (cloned as never as { signatureData(s: number): Uint8Array }).signatureData(segment) : new Uint8Array());
+    const signature = signFn(cloned.signatureData(segment));
     if (cloned.fallibleUnshieldedOffer) {
       const sigs = cloned.fallibleUnshieldedOffer.inputs.map((_, i) => cloned.fallibleUnshieldedOffer!.signatures.at(i) ?? signature);
       cloned.fallibleUnshieldedOffer = cloned.fallibleUnshieldedOffer.addSignatures(sigs) as typeof cloned.fallibleUnshieldedOffer;
@@ -131,12 +133,27 @@ async function main(): Promise<void> {
   const state = await Rx.firstValueFrom(wallet.state().pipe(Rx.filter((s) => s.isSynced)));
   console.log(`Deployer unshielded address: ${keystore.getBech32Address().asString()}`);
 
+  // `midnight-js-contracts` and `wallet-sdk`/`testkit-js` resolve two
+  // structurally-identical but nominally distinct copies of `ledger-v8`
+  // (confirmed by `npm run typecheck`: 8.1.1 top-level vs 8.1.0 nested under
+  // `@midnight-ntwrk/midnight-js-protocol`). Neither `Transaction` class
+  // accepts the other's instances directly. Round-tripping through
+  // `.serialize()`/`.deserialize(...)` — the same marker convention as the
+  // "Failed to clone intent" workaround below — crosses that boundary using
+  // only the wire format both share, rather than fighting the type system.
+  // UNVERIFIED end to end: no live devnet run has exercised this path yet.
   const walletAndMidnightProvider: WalletProvider & MidnightProvider = {
     getCoinPublicKey: () => state.shielded.coinPublicKey.toHexString(),
     getEncryptionPublicKey: () => state.shielded.encryptionPublicKey.toHexString(),
-    async balanceTx(tx, ttl) {
+    async balanceTx(tx: UnboundTransaction, ttl?: Date) {
+      const walletSideTx = WalletTransaction.deserialize(
+        'signature',
+        'proof',
+        'pre-binding',
+        (tx as unknown as { serialize(): Uint8Array }).serialize(),
+      );
       const recipe = await wallet.balanceUnboundTransaction(
-        tx,
+        walletSideTx as never,
         { shieldedSecretKeys, dustSecretKey },
         { ttl: ttl ?? new Date(Date.now() + 30 * 60 * 1000) },
       );
@@ -145,9 +162,23 @@ async function main(): Promise<void> {
       if (recipe.balancingTransaction) {
         signTransactionIntents(recipe.balancingTransaction as never, signFn, 'pre-proof');
       }
-      return wallet.finalizeRecipe(recipe);
+      const finalized = await wallet.finalizeRecipe(recipe);
+      return ProtocolTransaction.deserialize(
+        'signature',
+        'proof',
+        'binding',
+        (finalized as unknown as { serialize(): Uint8Array }).serialize(),
+      ) as never;
     },
-    submitTx: (tx) => wallet.submitTransaction(tx) as never,
+    async submitTx(tx) {
+      const walletSideTx = WalletTransaction.deserialize(
+        'signature',
+        'proof',
+        'binding',
+        (tx as unknown as { serialize(): Uint8Array }).serialize(),
+      );
+      return wallet.submitTransaction(walletSideTx as never) as never;
+    },
   };
 
   const zkConfigProvider = new NodeZkConfigProvider<string>(args.zkConfigPath);
@@ -155,6 +186,12 @@ async function main(): Promise<void> {
   const providers = {
     privateStateProvider: levelPrivateStateProvider({
       privateStateStoreName: 'payroll-private-state',
+      accountId: 'nightshift-deploy',
+      // Deploy-time-only local cache, not the salt/rate storage the README
+      // warns about — a fixed password is acceptable for this CLI tool
+      // (16+ chars per the README's private-state note); rotate if this
+      // script is ever used against real funds instead of a local devnet.
+      privateStoragePasswordProvider: () => 'nightshift-deploy-tool-local-cache',
     }),
     publicDataProvider: indexerPublicDataProvider(args.indexerUri, args.indexerWsUri),
     zkConfigProvider,

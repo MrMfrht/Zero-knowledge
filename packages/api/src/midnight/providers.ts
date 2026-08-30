@@ -30,6 +30,7 @@ import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import type {
   MidnightProvider,
   PrivateStateProvider,
+  UnboundTransaction,
   WalletProvider,
 } from '@midnight-ntwrk/midnight-js-types';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
@@ -38,7 +39,6 @@ import type {
   EncPublicKey,
   FinalizedTransaction,
   TransactionId,
-  UnboundTransaction,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PayrollPrivateState, PayrollPrivateStateId } from './contract.js';
 import { ZK_CONFIG_PATH } from './contract.js';
@@ -101,7 +101,7 @@ export interface PayrollProviders {
 function createInMemoryPrivateStateProvider<PS>(): PrivateStateProvider<PayrollPrivateStateId, PS> {
   let scope = '';
   const states = new Map<string, PS>();
-  const signingKeys = new Map<string, Uint8Array>();
+  const signingKeys = new Map<string, unknown>();
   const key = (id: string) => `${scope}:${id}`;
   return {
     setContractAddress(address: string) {
