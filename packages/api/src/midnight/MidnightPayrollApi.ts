@@ -565,7 +565,27 @@ export class MidnightPayrollApi implements PayrollApi {
     return ledger(state.data);
   }
 
+  /**
+   * localStorage as well as the in-memory provider, deliberately. The browser
+   * private-state provider does not survive a reload, and a worker who loses
+   * their rate+salt after accepting can never run confirmPayment or
+   * proveContribution again -- the exact loss that burned a worker key once
+   * already. localStorage is the same trust domain as the device secret,
+   * which already lives there; nothing new is exposed.
+   */
+  private acceptedRateStorageKey(): string {
+    return `nightshift:acceptedRate:${this.contractAddress}`;
+  }
+
   private async rememberAcceptedRate(ratePerPeriod: bigint, salt: Uint8Array): Promise<void> {
+    this.storage.setItem(
+      this.acceptedRateStorageKey(),
+      JSON.stringify({
+        workerKey: await this.getMyKey(),
+        ratePerPeriod: ratePerPeriod.toString(),
+        salt: bytesToHex(salt),
+      }),
+    );
     if (!this.writeProviders) return;
     this.writeProviders.privateStateProvider.setContractAddress(this.contractAddress);
     const existing = (await this.writeProviders.privateStateProvider.get(PAYROLL_PRIVATE_STATE_ID)) as
@@ -578,12 +598,26 @@ export class MidnightPayrollApi implements PayrollApi {
   }
 
   private async recallAcceptedRate(): Promise<{ ratePerPeriod: bigint; salt: Uint8Array } | null> {
-    if (!this.writeProviders) return null;
-    this.writeProviders.privateStateProvider.setContractAddress(this.contractAddress);
-    const stored = (await this.writeProviders.privateStateProvider.get(PAYROLL_PRIVATE_STATE_ID)) as
-      | { acceptedRate?: { ratePerPeriod: bigint; salt: Uint8Array } }
-      | null;
-    return stored?.acceptedRate ?? null;
+    if (this.writeProviders) {
+      this.writeProviders.privateStateProvider.setContractAddress(this.contractAddress);
+      const stored = (await this.writeProviders.privateStateProvider.get(PAYROLL_PRIVATE_STATE_ID)) as
+        | { acceptedRate?: { ratePerPeriod: bigint; salt: Uint8Array } }
+        | null;
+      if (stored?.acceptedRate) return stored.acceptedRate;
+    }
+
+    // Fallback for the session after a reload. The workerKey check makes a
+    // stale record from a previous identity (New Identity button) read as
+    // missing rather than producing a proof doomed to fail its rate check.
+    const raw = this.storage.getItem(this.acceptedRateStorageKey());
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { workerKey: string; ratePerPeriod: string; salt: string };
+      if (parsed.workerKey !== (await this.getMyKey())) return null;
+      return { ratePerPeriod: BigInt(parsed.ratePerPeriod), salt: hexToBytes(parsed.salt) };
+    } catch {
+      return null;
+    }
   }
 }
 
