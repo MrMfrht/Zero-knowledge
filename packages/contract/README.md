@@ -60,6 +60,15 @@ can use the contract without installing the Compact toolchain.
 > It does **not** contain proving keys, so it cannot generate a real transaction
 > yet. A full build lands before integration.
 
+> 🔴 **If you are merging the `contract-full-zk-build` branch, read this first.**
+> That branch adds real proving and verifier keys for all six circuits — but they
+> were generated **before** the `approveHours` write-once fix on 2026-08-30.
+> Proving keys are tied to the exact circuit they were built from, so
+> `approveHours.prover`, `approveHours.verifier` and `approveHours.bzkir` on that
+> branch no longer match the contract on `dev`, and any transaction proved with
+> them will fail to verify. **Rebase that branch onto `dev` and re-run
+> `npm run compact:full` before merging** — do not merge the keys as they stand.
+
 ## Circuits
 
 | Circuit | Status | What it does |
