@@ -170,3 +170,15 @@ export function nextPeriod(period: Period): Period {
 export function comparePeriods(a: Period, b: Period): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
+
+// ---------------------------------------------------------------------------
+// Design Tokens (for styling)
+// ---------------------------------------------------------------------------
+
+// The .js extension is required: this package builds with moduleResolution
+// "nodenext", where a relative import must name the emitted file, not the
+// source one. Without it `tsc` fails, even though bundlers accept it.
+export { designTokens } from './design-tokens.js';
+export type { DesignTokens } from './design-tokens.js';
+
+// CSS: import '@nightshift/shared/globals.css' in each app's main.tsx

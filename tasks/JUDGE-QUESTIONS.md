@@ -141,26 +141,6 @@ Judges who know cryptography will probe. These are the ones worth rehearsing.
 >
 > Midnight does have a function called `ownPublicKey()` that looks like it identifies the caller, but it is a witness: the caller's own machine chooses what it returns. Using it for authentication is the documented mistake in this ecosystem, and we do not use it anywhere in an authentication path.
 
-## "The proof runs on the user's own machine. Why can't they just lie to it?"
-
-**The sharpest question a technical judge can ask. Whoever answers must know this cold.**
-
-> Because a proof guarantees the **computation** was honest — not that the **inputs** were. Those are different things, and the gap between them is where every zero-knowledge design lives or dies.
->
-> You can absolutely feed a circuit whatever numbers you like. What you cannot do is make an assertion pass that the mathematics will not allow.
->
-> Concretely: if we had written `assert(ownPublicKey() == employerKey)`, an attacker just makes their machine return `employerKey` and gets a perfectly valid proof. The proof would even be *honest* — it truthfully says "the value I supplied equals employerKey." It is worthless, because nothing stopped them choosing that input.
->
-> We write `assert(hash(mySecret) == employerKey)` instead. They can still choose the secret, but now they would need one whose hash equals `employerKey`, and hashes do not run backwards.
-
-Then give them the general rule, because it shows the design was deliberate rather than lucky:
-
-> **Every circuit is only as strong as its anchor to public state.** Each of ours contains at least one assertion tying a caller-chosen input to something already on the chain they could not have manipulated — the employer's key, the commitment sealed at hiring, the hours the employer approved.
-
-If they push on `confirmPayment` specifically:
-
-> The worker picks the amount **and** the rate, so `amount == hours × rate` on its own proves nothing — they would just pick two numbers that agree. What makes it real is the line above it, which checks the rate opens the commitment stored at hiring. To fake a payment they would need a different rate and salt that hash to the same commitment.
-
 ## "Could an attacker brute-force the commitment?"
 
 > Not meaningfully. They would need to guess the salary and a 32-byte random salt together. That search space is astronomically large.

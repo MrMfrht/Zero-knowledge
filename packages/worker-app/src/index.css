@@ -1,0 +1,12 @@
+/* Worker-app specific overrides (shared styles live in @nightshift/shared/globals.css) */
+
+.payments-section {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.privacy-panel.glass-card {
+  border-top: 3px solid var(--accent-purple);
+}
