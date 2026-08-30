@@ -144,7 +144,7 @@ export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-slate-200 mb-2">
-              {payType === 'salaried' ? 'Monthly Salary (DUST / Units)' : 'Hourly Rate (DUST / Units)'}
+              {payType === 'salaried' ? 'Monthly Salary (NIGHT / Units)' : 'Hourly Rate (NIGHT / Units)'}
             </label>
             <div className="relative">
               <input
@@ -156,7 +156,7 @@ export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
                 placeholder="5000"
                 className="w-full rounded-xl bg-slate-900 border border-slate-700 px-4 py-3 text-sm text-slate-100 font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition"
               />
-              <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-mono">DUST</span>
+              <span className="absolute right-4 top-3.5 text-xs text-slate-400 font-mono">NIGHT</span>
             </div>
           </div>
 
@@ -228,7 +228,7 @@ export const HireForm: React.FC<HireFormProps> = ({ api, onSuccess }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800">
                 <span className="text-xs text-slate-400 block">Agreed Rate per Period:</span>
-                <span className="text-sm font-semibold text-slate-100 font-mono">{createdOffer.ratePerPeriod.toString()} DUST</span>
+                <span className="text-sm font-semibold text-slate-100 font-mono">{createdOffer.ratePerPeriod.toString()} NIGHT</span>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800">
