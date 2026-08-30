@@ -186,25 +186,45 @@ async function main(): Promise<void> {
   // working against this exact devnet in
   // `~/nightshift/midnight-local-dev/src/wallet.ts` (`registerNightForDust`).
   //
-  // ⚠️ UNRESOLVED as of this writing: a live run against a genuinely fresh
-  // local devnet (confirmed via `docker logs midnight-node` that blocks were
-  // being produced continuously, ruling out a stalled chain) still left
-  // `state.unshielded.availableCoins` reporting zero entries immediately
-  // after `isSynced` went true, despite `state.unshielded.balances` showing
-  // a real, nonzero NIGHT balance for the deployer address. That mismatch —
-  // a nonzero balance with no enumerable coins to register — was not
-  // resolved before time ran out on this investigation; the next step is
-  // logging `state.unshielded.availableCoins` itself (not just its length)
-  // right after sync to see whether coins appear a few seconds later, or
-  // whether balances and availableCoins are populated by genuinely separate
-  // sync phases that this script isn't waiting for correctly.
+  // ⚠️ OPEN: a live run against a genuinely fresh devnet saw
+  // `state.unshielded.availableCoins` empty right after `isSynced` went true
+  // while `state.unshielded.balances` showed real, nonzero NIGHT.
+  //
+  // `isSynced` is not the culprit — the facade defines it as all three
+  // sub-wallets being strictly complete, unshielded included
+  // (wallet-sdk-facade/dist/index.js, `get isSynced()`). The likelier
+  // explanation is that the coins are *booked*: UnshieldedWallet exposes
+  // THREE collections — `totalCoins`, `availableCoins` and `pendingCoins` —
+  // and its own `rotateUtxos` doc says booking "moves the UTxOs from
+  // available to pending so a concurrent build call cannot reuse them".
+  // A balance counted from total, with every coin sitting in pending, would
+  // look exactly like what we saw. The midnight-js skill lists the same
+  // shape for DUST: "pendingCoins > 0 && availableCoins === 0 -> locked by a
+  // pending/failed transaction", cured by restarting the process.
+  //
+  // So print all three counts before deciding anything. The previous run
+  // logged only `availableCoins.length`, which is why it could not tell
+  // "no coins exist" from "every coin is booked".
+  const nightSummary = (s: typeof state) =>
+    `total=${s.unshielded.totalCoins.length} available=${s.unshielded.availableCoins.length}` +
+    ` pending=${s.unshielded.pendingCoins.length}` +
+    ` balances=${JSON.stringify(s.unshielded.balances, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))}`;
+
   if (state.dust.availableCoins.length === 0) {
-    console.log(
-      `No spendable DUST yet. Unshielded coins visible: ${state.unshielded.availableCoins.length}` +
-        ` (balance: ${JSON.stringify(state.unshielded.balances, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))})`,
-    );
+    console.log(`No spendable DUST yet. Unshielded coins: ${nightSummary(state)}`);
+    if (state.unshielded.totalCoins.length > 0) {
+      console.log(
+        `  coin meta: ${JSON.stringify(
+          state.unshielded.totalCoins.map((c) => c.meta),
+          (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
+        )}`,
+      );
+    }
+    // `!== true`, not `=== false`: the midnight-js skill's own filter treats a
+    // missing/undefined flag as unregistered, and `=== false` would silently
+    // skip every coin whose meta omits the field.
     const unregistered = state.unshielded.availableCoins.filter(
-      (coin) => coin.meta.registeredForDustGeneration === false,
+      (coin) => coin.meta.registeredForDustGeneration !== true,
     );
     if (unregistered.length > 0) {
       console.log(`Registering ${unregistered.length} NIGHT UTXO(s) for DUST generation...`);
@@ -218,8 +238,12 @@ async function main(): Promise<void> {
       console.log(`DUST registration submitted: ${regTxId}`);
     } else if (state.unshielded.availableCoins.length === 0) {
       console.log(
-        'No unshielded coins are enumerable yet even though a balance is visible — ' +
-          'see the UNRESOLVED note above. Waiting in case this resolves with more sync time.',
+        state.unshielded.pendingCoins.length > 0
+          ? `Every NIGHT UTXO is booked as pending (${state.unshielded.pendingCoins.length}), so none can be ` +
+              'registered. That is a stale booking from an earlier failed run — kill this process and ' +
+              'rerun; if it persists, `docker compose -f docker/compose.yml down -v` and redeploy.'
+          : 'No NIGHT UTXOs at all for this address, yet a balance is reported. Check the seed is the ' +
+              'genesis master wallet and that the indexer is caught up with the node.',
       );
     } else {
       console.log('All visible NIGHT UTXOs are already registered for DUST generation.');
@@ -230,7 +254,8 @@ async function main(): Promise<void> {
         Rx.throttleTime(5_000),
         Rx.tap((s) =>
           console.log(
-            `  DUST balance: ${s.dust.balance(new Date())}, spendable coins: ${s.dust.availableCoins.length}, unshielded coins: ${s.unshielded.availableCoins.length}`,
+            `  DUST balance: ${s.dust.balance(new Date())}, spendable DUST coins: ${s.dust.availableCoins.length}` +
+              `, NIGHT ${nightSummary(s)}`,
           ),
         ),
         Rx.filter((s) => s.dust.availableCoins.length >= 1),

@@ -29,11 +29,18 @@
 # 2. Turn OFF Docker Desktop's containerd image store
 #    (Settings > General > "Use containerd for pulling and storing images").
 #    With it on, Docker Desktop 29.6.1 unpacks the Earthly-built midnight-node
-#    image as ZERO-BYTE FILES — every binary, the WASM runtime, everything —
-#    and the node exits 255 with "exec /entrypoint.sh: exec format error".
-#    The image is not corrupt: its layer blob holds a valid 179,808,200-byte
-#    ELF that GNU tar extracts perfectly. Only the snapshotter is wrong, so
-#    re-pulling never helps. The other two images here are unaffected.
+#    image as ZERO-BYTE FILES — every binary, /etc/passwd, the WASM runtime,
+#    everything. You get two errors depending on how far it gets:
+#    "unable to find user root: no matching entries in passwd file" (empty
+#    /etc/passwd) and "exec /entrypoint.sh: exec format error" (empty script).
+#    Both are the same bug wearing different hats.
+#
+#    The image is NOT corrupt, so re-pulling never helps, and neither does
+#    `docker load` from a known-good tar: the layer blob holds a valid
+#    179,808,200-byte ELF that GNU tar extracts perfectly. Only the
+#    snapshotter is wrong. Switching to overlay2 restores all three files to
+#    their real sizes. The other two images here are unaffected — whatever
+#    the incompatibility is, it is specific to how this image was built.
 
 services:
   # The proof server is the one piece that handles secrets. Keep it local.
@@ -53,13 +60,6 @@ services:
 
   node:
     image: 'midnightntwrk/midnight-node:0.22.3'
-    # Numeric UID, not the image's declared `root`. This image ships an EMPTY
-    # /etc/passwd (verified: `wc -l` returns 0), so runc cannot resolve the
-    # name "root" to a uid and refuses to start the container with
-    # "unable to find user root: no matching entries in passwd file".
-    # Passing 0:0 skips the name lookup entirely. Same uid either way — this
-    # is not a privilege change, it is a lookup change.
-    user: '0:0'
     ports:
       - '127.0.0.1:9944:9944'
     environment:
