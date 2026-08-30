@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePayroll, PERSONAS } from '../context/PayrollContext.tsx';
-import { ShieldCheck, RotateCcw, User, Sparkles, Wallet, UserPlus } from 'lucide-react';
+import { ShieldCheck, RotateCcw, User, Sparkles, Wallet, UserPlus, Copy, Check } from 'lucide-react';
 import { regenerateLocalSecret } from '@nightshift/api';
 
 export const Header: React.FC = () => {
@@ -25,6 +25,15 @@ export const Header: React.FC = () => {
    * live-swapped secret would leave the page holding providers and cached
    * reads belonging to the previous person.
    */
+  const [copiedKey, setCopiedKey] = useState(false);
+
+  const copyWorkerKey = () => {
+    void navigator.clipboard.writeText(activeWorkerKey).then(() => {
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    });
+  };
+
   const newIdentity = () => {
     const confirmed = window.confirm(
       [
@@ -71,6 +80,22 @@ export const Header: React.FC = () => {
             <span className="persona-select" style={{ border: 'none', background: 'transparent' }}>
               {activeWorkerKey.slice(0, 10)}…
             </span>
+            {/*
+              The header shows a truncated key because the full one is 64 hex
+              characters, but the employer needs all of it -- a `hire` against
+              a mistyped key seals a commitment to a worker who does not
+              exist, and the contract will never allow that row to be
+              replaced. Copying it is the only safe way to move it.
+            */}
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={copyWorkerKey}
+              title={`Copy ${activeWorkerKey}`}
+              style={{ padding: '0.25rem 0.5rem' }}
+            >
+              {copiedKey ? <Check size={14} /> : <Copy size={14} />}
+              {copiedKey ? 'Copied' : 'Copy'}
+            </button>
           </div>
         ) : (
           <>
