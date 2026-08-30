@@ -44,9 +44,12 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PayrollCircuitId, PayrollPrivateState, PayrollPrivateStateId } from './contract.js';
 import { ZK_CONFIG_PATH } from './contract.js';
+import { bytesToHex, hexToBytes } from './encoding.js';
 
-const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
-const fromHex = (hex: string): Uint8Array => new Uint8Array(Buffer.from(hex, 'hex'));
+// Bare hex, no `0x` prefix: this is the wire format the DApp connector and
+// the ledger types use, not the prefixed domain form in `@nightshift/shared`.
+const toHex = (bytes: Uint8Array): string => bytesToHex(bytes).slice(2);
+const fromHex = (hex: string): Uint8Array => hexToBytes(hex);
 
 /**
  * Bridges the connected wallet's `balanceUnsealedTransaction`/

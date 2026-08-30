@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  MockPayrollApi,
+  createPayrollApi,
+  payrollApiConfigFromEnv,
   DEMO_KARIM,
   DEMO_DANA,
   DEMO_SAM,
@@ -9,6 +10,7 @@ import {
   PaymentMismatchError,
   ContributionMismatchError,
 } from '@nightshift/api';
+import type { PayrollApi } from '@nightshift/api';
 import type {
   EmploymentRecord,
   Offer,
@@ -53,6 +55,10 @@ export const PERSONAS: PersonaOption[] = [
 interface PayrollContextType {
   activeWorkerKey: WorkerKey;
   activePersona: PersonaOption;
+  /** True when this app is talking to a deployed contract, not the mock. */
+  live: boolean;
+  /** One line naming the backend, for the UI to show. */
+  backendLabel: string;
   record: EmploymentRecord | null;
   offer: Offer | null;
   loading: boolean;
@@ -68,53 +74,98 @@ interface PayrollContextType {
 const PayrollContext = createContext<PayrollContextType | undefined>(undefined);
 
 export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Real contract if VITE_CONTRACT_ADDRESS is set, mock otherwise. Read once:
+  // switching backends mid-session would leave half the screen stale.
+  const config = useMemo(() => payrollApiConfigFromEnv(import.meta.env), []);
+  const [{ live, label: backendLabel }] = useState(() =>
+    createPayrollApi({ ...config, actingAs: DEMO_KARIM }),
+  );
+
+  /**
+   * Two different things, and conflating them is what breaks the live mode.
+   *
+   * `personaKey` is which demo character the mock should impersonate — a
+   * selector in the UI. `activeWorkerKey` is who this session actually IS.
+   * Against the mock they are the same. Against a real contract there is no
+   * such thing as impersonation: identity is `dappKey(localSk(),
+   * deploymentId)`, derived from a secret this browser holds, and the api is
+   * the only thing that can answer it. So live mode ignores the selector and
+   * asks `getMyKey()`.
+   */
+  const [personaKey, setPersonaKey] = useState<WorkerKey>(DEMO_KARIM);
   const [activeWorkerKey, setActiveWorkerKey] = useState<WorkerKey>(DEMO_KARIM);
-  const [api, setApi] = useState<MockPayrollApi>(() => new MockPayrollApi({ actingAs: DEMO_KARIM }));
+  const [api, setApi] = useState<PayrollApi>(() => createPayrollApi({ ...config, actingAs: DEMO_KARIM }).api);
   const [record, setRecord] = useState<EmploymentRecord | null>(null);
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const activePersona = PERSONAS.find((p) => p.key === activeWorkerKey) || {
-    key: activeWorkerKey,
-    name: 'Custom Worker',
-    role: 'Worker',
-    description: 'Active session',
-  };
+  const activePersona: PersonaOption = live
+    ? {
+        key: activeWorkerKey,
+        name: 'This device',
+        role: 'Identity derived from this browser’s own secret',
+        description: 'On chain there are no personas — nothing can act as someone else.',
+      }
+    : PERSONAS.find((p) => p.key === personaKey) || {
+        key: personaKey,
+        name: 'Custom Worker',
+        role: 'Worker',
+        description: 'Active session',
+      };
 
-  const loadData = useCallback(async (currentApi: MockPayrollApi, workerKey: WorkerKey) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const rec = await currentApi.getEmploymentRecord(workerKey);
-      setRecord(rec);
+  const loadData = useCallback(
+    async (currentApi: PayrollApi, selectedPersona: WorkerKey) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const workerKey = live ? await currentApi.getMyKey() : selectedPersona;
+        setActiveWorkerKey(workerKey);
 
-      const pendingOffer = await currentApi.getMyOffer();
-      setOffer(pendingOffer);
-    } catch (err) {
-      console.error('Failed to load payroll record:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch employment record');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        // A brand-new device is nobody's employee yet, and the contract says
+        // so by throwing. That is not an error to shout about: the offer below
+        // is exactly what such a worker is here to look at.
+        try {
+          setRecord(await currentApi.getEmploymentRecord(workerKey));
+        } catch (recordError) {
+          if (!live) throw recordError;
+          setRecord(null);
+        }
+
+        setOffer(await currentApi.getMyOffer());
+      } catch (err) {
+        console.error('Failed to load payroll record:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch employment record');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [live],
+  );
 
   useEffect(() => {
-    const newApi = new MockPayrollApi({ actingAs: activeWorkerKey });
-    setApi(newApi);
-    loadData(newApi, activeWorkerKey);
-  }, [activeWorkerKey, loadData]);
+    // Live mode builds one api and keeps it: `actingAs` means nothing there,
+    // so rebuilding per persona would only throw away the wallet connection.
+    const newApi = live ? api : createPayrollApi({ ...config, actingAs: personaKey }).api;
+    if (newApi !== api) setApi(newApi);
+    void loadData(newApi, personaKey);
+    // `api` is deliberately not a dependency: it is set by this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personaKey, loadData, live, config]);
 
   const setPersona = (key: WorkerKey) => {
-    setActiveWorkerKey(key);
+    setPersonaKey(key);
   };
 
   const refresh = async () => {
-    await loadData(api, activeWorkerKey);
+    await loadData(api, personaKey);
   };
 
   const resetStore = async () => {
-    resetMockStore();
+    // There is no reset on a real chain. `resetMockStore` would silently do
+    // nothing there, and a button that appears to work and does not is worse
+    // than one that is absent — the Header hides it in live mode.
+    if (!live) resetMockStore();
     await refresh();
   };
 
@@ -183,6 +234,8 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         activeWorkerKey,
         activePersona,
+        live,
+        backendLabel,
         record,
         offer,
         loading,

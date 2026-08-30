@@ -39,6 +39,13 @@ export type { MockPayrollApiOptions } from './mock/MockPayrollApi.js';
 
 export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
 export type { MidnightPayrollApiOptions } from './midnight/MidnightPayrollApi.js';
+export { NETWORK_IDS } from './midnight/network.js';
+export type { NetworkId } from './midnight/network.js';
+
+// How an app gets an api. Apps should call this rather than picking a class:
+// see the comment at the top of createPayrollApi.ts.
+export { createPayrollApi, payrollApiConfigFromEnv } from './createPayrollApi.js';
+export type { PayrollApiConfig, PayrollApiDescription } from './createPayrollApi.js';
 
 // Re-exported so apps need only one import for the common types.
 export type {

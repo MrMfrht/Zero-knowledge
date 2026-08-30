@@ -36,24 +36,42 @@
  */
 import { rmSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+
+/**
+ * Packages this script forces to one instance, by name.
+ *
+ * Exported because `check-dependency-tree.mjs` would otherwise report the
+ * survivor as a version conflict — which it literally is, and deliberately
+ * so. Those two scripts have to agree on this list or one of them is wrong.
+ */
+export const DEDUPED_PACKAGES = ['@midnight-ntwrk/onchain-runtime-v3'];
 
 /** Nested copies to remove. Each shadows a correct hoisted copy. */
 const duplicates = [
   'node_modules/@midnight-ntwrk/midnight-js-protocol/node_modules/@midnight-ntwrk/onchain-runtime-v3',
 ];
 
-let removed = 0;
-for (const relative of duplicates) {
-  const path = new URL(relative, `file://${repoRoot.replace(/\\/g, '/')}`);
-  const target = fileURLToPath(path);
-  if (existsSync(target)) {
-    rmSync(target, { recursive: true, force: true });
-    console.log(`dedupe-wasm: removed duplicate ${relative}`);
-    removed += 1;
+export function removeDuplicateWasmPackages() {
+  let removed = 0;
+  for (const relative of duplicates) {
+    const path = new URL(relative, `file://${repoRoot.replace(/\\/g, '/')}`);
+    const target = fileURLToPath(path);
+    if (existsSync(target)) {
+      rmSync(target, { recursive: true, force: true });
+      console.log(`dedupe-wasm: removed duplicate ${relative}`);
+      removed += 1;
+    }
+  }
+  if (removed === 0) {
+    console.log('dedupe-wasm: no duplicate WASM packages found');
   }
 }
-if (removed === 0) {
-  console.log('dedupe-wasm: no duplicate WASM packages found');
+
+// Only when run as a script. `check-dependency-tree.mjs` imports
+// DEDUPED_PACKAGES from here, and an import must not delete anything.
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  removeDuplicateWasmPackages();
 }

@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MockPayrollApi, DEMO_EMPLOYER } from '@nightshift/api';
+import { createPayrollApi, payrollApiConfigFromEnv, DEMO_EMPLOYER } from '@nightshift/api';
 import { Navbar } from './components/Navbar';
 import type { TabType } from './components/Navbar';
 import { TeamList } from './components/TeamList';
 import { HireForm } from './components/HireForm';
 import { ApproveHours } from './components/ApproveHours';
 import { PayWorker } from './components/PayWorker';
-import { ShieldCheck, Info, CheckCircle2, Heart } from 'lucide-react';
+import { ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('team');
@@ -15,10 +15,14 @@ export default function App() {
   const [selectedWorkerKey, setSelectedWorkerKey] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Instantiating MockPayrollApi acting as DEMO_EMPLOYER per specification in tasks/04-employer-app.md
-  const api = useMemo(() => {
-    return new MockPayrollApi({ actingAs: DEMO_EMPLOYER });
-  }, []);
+  // Real contract if VITE_CONTRACT_ADDRESS is set, mock otherwise — the
+  // decision lives in @nightshift/api so all three apps make it identically.
+  // `actingAs` is the mock's demo persona and is ignored on chain, where
+  // identity comes from this browser's own secret and nothing can override it.
+  const { api, live, label } = useMemo(
+    () => createPayrollApi({ ...payrollApiConfigFromEnv(import.meta.env), actingAs: DEMO_EMPLOYER }),
+    [],
+  );
 
   // Reflect the api's own wallet state rather than tracking a second,
   // disconnected copy of it here — this is the one change that keeps this
@@ -78,7 +82,27 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        
+
+        {/*
+          Which backend is behind this screen, stated on screen. A demo that is
+          silently running on fixtures looks exactly like one running on chain,
+          and that confusion is expensive to discover late.
+        */}
+        <div
+          className={`mb-6 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+            live
+              ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-300'
+              : 'border-amber-500/40 bg-amber-500/5 text-amber-300'
+          }`}
+        >
+          <Info className="h-4 w-4 shrink-0" />
+          <span>
+            {live
+              ? `Live on Midnight — ${label}`
+              : `Demo mode — ${label}. Set VITE_CONTRACT_ADDRESS to talk to a deployed contract.`}
+          </span>
+        </div>
+
         {/* Toast Notification */}
         {toast && (
           <div className="fixed bottom-6 right-6 z-50 animate-fade-in flex items-center gap-3 rounded-xl bg-slate-900 border border-emerald-500/40 p-4 shadow-2xl shadow-emerald-950/80 text-emerald-300 text-sm">

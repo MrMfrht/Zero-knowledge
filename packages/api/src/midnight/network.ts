@@ -5,7 +5,10 @@
  * need no wallet"). Values from the midnight-js skill's network table,
  * cross-referenced against docs.midnight.network's endpoint list.
  */
-export type NetworkId = 'undeployed' | 'preview' | 'preprod' | 'mainnet';
+/** The networks, as values, so configuration can be validated against them. */
+export const NETWORK_IDS = ['undeployed', 'preview', 'preprod', 'mainnet'] as const;
+
+export type NetworkId = (typeof NETWORK_IDS)[number];
 
 export const INDEXER_ENDPOINTS: Record<NetworkId, { http: string; ws: string }> = {
   undeployed: {

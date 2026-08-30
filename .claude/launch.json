@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "auditor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:auditor"],
+      "port": 3003
+    },
+    {
+      "name": "worker-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:worker"],
+      "port": 3000
+    },
+    {
+      "name": "employer-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:employer"],
+      "port": 3001
+    }
+  ]
+}

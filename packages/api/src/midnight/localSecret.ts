@@ -9,6 +9,8 @@
  * from any method on this class.
  */
 
+import { bytesToHex, hexToBytes } from './encoding.js';
+
 /**
  * Exported so Node tooling and tests can seed a storage with a known secret
  * instead of hardcoding this string in a second place. Nothing in the apps
@@ -32,9 +34,10 @@ function randomSecret(): Uint8Array {
 export function getOrCreateLocalSecret(storage: Storage = window.localStorage): Uint8Array {
   const existing = storage.getItem(STORAGE_KEY);
   if (existing) {
-    return new Uint8Array(Buffer.from(existing, 'hex'));
+    return hexToBytes(existing);
   }
   const secret = randomSecret();
-  storage.setItem(STORAGE_KEY, Buffer.from(secret).toString('hex'));
+  // Bare hex, no `0x` — this is a storage value, not a domain `WorkerKey`.
+  storage.setItem(STORAGE_KEY, bytesToHex(secret).slice(2));
   return secret;
 }
