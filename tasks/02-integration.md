@@ -5,6 +5,11 @@
 **Your folder:** `packages/api/`
 **Your branch:** `api` (branched from `dev`)
 
+> ### 📌 Status update, 30 Aug: see [02-integration-STATUS.md](02-integration-STATUS.md)
+> SPIKE-PAY is done and merged. The compiled contract and `witnesses.ts` are now
+> on `dev`, so `MidnightPayrollApi` is unblocked — that file lists exactly what
+> is finished and what is next. This file below is the original brief.
+
 ---
 
 ## Do you need WSL?

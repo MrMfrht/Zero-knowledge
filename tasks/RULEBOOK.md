@@ -9,7 +9,7 @@ One page. Read it once, keep it open.
 | You are | Your file | Your folder | Your branch | Need WSL? |
 |---|---|---|---|---|
 | **A** — Contract | [01-contract.md](01-contract.md) | `packages/contract/` | `contract` | **YES** |
-| **B** — Integration | [02-integration.md](02-integration.md) | `packages/api/` | `api` | **YES** |
+| **B** — Integration | [02-integration.md](02-integration.md) · [status](02-integration-STATUS.md) | `packages/api/` | `api` | **YES** |
 | **C** — Worker app | [03-worker-app.md](03-worker-app.md) | `packages/worker-app/` | `worker-app` | **No** |
 | **D** — Employer app | [04-employer-app.md](04-employer-app.md) | `packages/employer-app/` | `employer-app` | **No** |
 | **E** — Auditor view | [05-auditor.md](05-auditor.md) | `packages/auditor/` | `auditor` | **No** |
