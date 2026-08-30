@@ -19,7 +19,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "deploy": "tsx src/midnight/deploy.ts",
-    "fund": "tsx src/midnight/fund.ts"
+    "fund": "tsx src/midnight/fund.ts",
+    "whoami": "tsx src/midnight/whoami.ts"
   },
   "dependencies": {
     "@nightshift/shared": "0.1.0",
