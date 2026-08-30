@@ -9,7 +9,13 @@
  * from any method on this class.
  */
 
-const STORAGE_KEY = 'nightshift:localSk';
+/**
+ * Exported so Node tooling and tests can seed a storage with a known secret
+ * instead of hardcoding this string in a second place. Nothing in the apps
+ * should need it.
+ */
+export const LOCAL_SECRET_STORAGE_KEY = 'nightshift:localSk';
+const STORAGE_KEY = LOCAL_SECRET_STORAGE_KEY;
 
 function randomSecret(): Uint8Array {
   const bytes = new Uint8Array(32);

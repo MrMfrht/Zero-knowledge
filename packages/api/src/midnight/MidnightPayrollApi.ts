@@ -84,6 +84,17 @@ export class OfferNotYetReceivedError extends Error {
 export interface MidnightPayrollApiOptions {
   readonly contractAddress: string;
   readonly networkId: NetworkId;
+  /**
+   * Where this device's 32-byte secret lives. Defaults to the browser's
+   * `localStorage`, which is the only correct answer for the apps.
+   *
+   * Node tooling and tests must pass their own, because `window` does not
+   * exist there — without this the constructor throws before any method runs.
+   * Whatever is passed holds the one secret the entire product depends on
+   * never leaving the device, so it must not be anything that persists
+   * somewhere shared.
+   */
+  readonly storage?: Storage;
 }
 
 export class MidnightPayrollApi implements PayrollApi {
@@ -101,7 +112,7 @@ export class MidnightPayrollApi implements PayrollApi {
     this.contractAddress = options.contractAddress;
     this.networkId = options.networkId;
     setNetworkId(this.networkId);
-    this.secret = getOrCreateLocalSecret();
+    this.secret = getOrCreateLocalSecret(options.storage ?? window.localStorage);
   }
 
   // ---------------------------------------------------------------------
@@ -137,6 +148,27 @@ export class MidnightPayrollApi implements PayrollApi {
     this.writeProviders = await connectPayrollProviders(this.connection.connectedApi);
     this.foundContract = undefined; // rebuild against the fresh providers
     return this.connection.status;
+  }
+
+  /**
+   * Attach already-built providers instead of going through a browser wallet.
+   *
+   * `connectWallet()` reaches for `@midnight-ntwrk/dapp-connector-api`, which
+   * only exists inside a page with a wallet extension. That is right for the
+   * product and wrong for testing: it meant this class could not be executed
+   * anywhere a test runner lives, which is the actual reason it shipped
+   * untested. Node tooling builds the same six providers over a headless
+   * wallet (`headlessWallet.ts`) and hands them in here.
+   *
+   * This is NOT a way for an app to bring its own signer. The apps must go
+   * through `connectWallet()` so that keys stay in the extension — the trust
+   * boundary in CLAUDE.md is the product, not a preference. Anything calling
+   * this is Node-side tooling by definition, because assembling a
+   * `WalletProvider` at all requires holding a secret key.
+   */
+  async connectWithProviders(providers: PayrollProviders): Promise<void> {
+    this.writeProviders = providers;
+    this.foundContract = undefined; // rebuild against the fresh providers
   }
 
   async disconnectWallet(): Promise<void> {

@@ -30,8 +30,10 @@ import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import type {
   MidnightProvider,
   PrivateStateProvider,
+  ProofProvider,
   UnboundTransaction,
   WalletProvider,
+  ZKConfigProvider,
 } from '@midnight-ntwrk/midnight-js-types';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
@@ -86,8 +88,13 @@ function buildWalletAndMidnightProvider(connectedApi: ConnectedAPI): WalletProvi
 export interface PayrollProviders {
   readonly privateStateProvider: PrivateStateProvider<PayrollPrivateStateId, PayrollPrivateState>;
   readonly publicDataProvider: ReturnType<typeof indexerPublicDataProvider>;
-  readonly zkConfigProvider: FetchZkConfigProvider<PayrollCircuitId>;
-  readonly proofProvider: ReturnType<typeof createProofProvider>;
+  // Interfaces, not the concrete browser classes. The browser path supplies
+  // `FetchZkConfigProvider` + `createProofProvider`; Node tooling supplies
+  // `NodeZkConfigProvider` + `httpClientProofProvider`. Both satisfy these,
+  // and naming the classes here would have made the real api unrunnable
+  // outside a page with a wallet extension — which is why it had no tests.
+  readonly zkConfigProvider: ZKConfigProvider<PayrollCircuitId>;
+  readonly proofProvider: ProofProvider;
   readonly walletProvider: WalletProvider;
   readonly midnightProvider: MidnightProvider;
 }
