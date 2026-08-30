@@ -236,10 +236,28 @@ deployment, never a constant and never a copy. That is stated in the
 constructor's own comment, because it is the kind of thing a hurried deploy
 script gets wrong.
 
-**Chosen over using the contract's own address** because a constructor argument
-uses only constructs already proven to compile here, and is explicit about where
-the value comes from. The trade is that correctness depends on the deploy script
-rather than on the chain.
+**Why not use the contract's own address instead?** That was the obvious
+alternative — the chain would supply the per-deployment value for free, with no
+deploy script to get wrong. We checked the documentation before choosing, and
+two things ruled it out:
+
+- `kernel.self(): ContractAddress` does exist and returns the contract's own
+  address ([ledger ADT reference](https://docs.midnight.network/compact/data-types/ledger-adt)).
+  But `Kernel` exposes *ledger operations*, and the language reference defines a
+  circuit containing a ledger operation as **impure** — so it cannot be called
+  from `dappKey`, which is `pure`. It would have to be read at each call site and
+  passed in, which is exactly the shape we already have, only with a value we
+  control less.
+- **Nothing in the documentation says whether the address is even knowable inside
+  a `constructor`.** Every official example calls `kernel.self()` from an ordinary
+  `export circuit`, never a constructor, and the address is described as
+  *assigned by the deployment transaction* — the same transaction the constructor
+  runs inside. We could not confirm it, so we did not build on it.
+
+So the trade is deliberate: correctness now depends on the deploy script
+generating fresh randomness, rather than on a chain behaviour we could not
+verify. If someone later confirms the constructor can read `kernel.self()`,
+switching is a small change — and would remove the one way to get this wrong.
 
 ---
 
