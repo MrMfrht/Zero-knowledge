@@ -37,6 +37,9 @@
   .legend code { font-family: var(--mono); color: var(--indigo); white-space: nowrap; min-width: 118px; }
   .legend span { color: var(--dim); }
   .legend b { color: var(--text); font-weight: 600; }
+  .ctl { background: var(--panel2); color: var(--dim); border: 1px solid var(--border); border-radius: 8px;
+         padding: 5px 12px; font-size: .75rem; cursor: pointer; font-family: inherit; }
+  .ctl:hover { color: var(--text); border-color: var(--indigo); }
   .claim { margin-top: 20px; border-left: 3px solid var(--green); padding: 12px 16px; background: #0e1a14; border-radius: 0 8px 8px 0; font-size: .85rem; color: #a7d9c3; }
 </style>
 </head>
@@ -45,6 +48,9 @@
   <h1>⛓ On-Chain Circuit Evidence
     <span class="badge">MIDNIGHT · LOCAL DEVNET</span>
     <span class="badge" id="conn">CONNECTING…</span>
+    <span style="flex:1"></span>
+    <button class="ctl" onclick="clearLog()" title="Hide everything already on chain; only circuits executed after this click will appear.">⌫ Clear — log from now</button>
+    <button class="ctl" onclick="showAll()" title="Show the full history again, from contract deployment.">↺ Full history</button>
   </h1>
   <p class="sub">Every zero-knowledge circuit execution against the NightShift payroll contract, streamed live from the
     chain indexer. The circuit <i>names</i> are public — the salaries they operate on never are: not one appears
@@ -129,6 +135,7 @@ function connect() {
       // may append, or every entry would double.
       if (!startedEmpty && act.transaction.block.height <= lastHeight) return;
       lastHeight = act.transaction.block.height;
+      if (act.transaction.block.height < logFrom) return;
       const name = act.__typename === 'ContractDeploy' ? 'deploy' : (act.entryPoint ?? act.__typename);
       addEntry(act.transaction.block.height, act.transaction.block.timestamp, name, count > 0 && Date.now() - loadTime > 3000);
     }
@@ -142,6 +149,21 @@ function connect() {
 }
 let lastHeight = -1;
 const loadTime = Date.now();
+
+// The chain itself cannot be emptied -- old transactions are permanent by
+// design. "Clearing" therefore means remembering a height and hiding
+// everything at or below it, which survives reloads via localStorage.
+const FROM_KEY = 'nightshift:chainLogFrom';
+let logFrom = Number(localStorage.getItem(FROM_KEY) || 0);
+
+function clearLog() {
+  localStorage.setItem(FROM_KEY, String(lastHeight + 1));
+  location.reload();
+}
+function showAll() {
+  localStorage.removeItem(FROM_KEY);
+  location.reload();
+}
 connect();
 </script>
 </body>
