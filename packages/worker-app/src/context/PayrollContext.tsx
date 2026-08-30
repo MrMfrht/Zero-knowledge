@@ -12,6 +12,7 @@ import {
   PayrollError,
 } from '@nightshift/api';
 import type { PayrollApi } from '@nightshift/api';
+import { withTimeout } from '../withTimeout.ts';
 import type {
   EmploymentRecord,
   Offer,
@@ -272,7 +273,7 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const acceptOffer = async (ratePerPeriod: bigint, salt: string): Promise<WriteResult> => {
     try {
-      await api.acceptOffer({ ratePerPeriod, salt });
+      await withTimeout('Accepting this offer', api.acceptOffer({ ratePerPeriod, salt }));
       await refresh();
       return { success: true };
     } catch (err) {
@@ -292,7 +293,7 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const confirmPayment = async (period: Period, amountReceived: bigint): Promise<WriteResult> => {
     try {
-      await api.confirmPayment({ period, amountReceived });
+      await withTimeout('Confirming this payment', api.confirmPayment({ period, amountReceived }));
       await refresh();
       return { success: true };
     } catch (err) {
@@ -311,7 +312,7 @@ export const PayrollProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const proveContribution = async (period: Period, declared: bigint): Promise<WriteResult> => {
     try {
-      await api.proveContribution({ period, declared });
+      await withTimeout('Proving this contribution', api.proveContribution({ period, declared }));
       await refresh();
       return { success: true };
     } catch (err) {
