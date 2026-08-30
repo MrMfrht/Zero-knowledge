@@ -82,3 +82,6 @@ export type { RememberedOffer } from './midnight/offerVault.js';
 // Devnet convenience: a hired worker key can never be hired again, so
 // demoing the flow twice needs an identity with no history.
 export { regenerateLocalSecret } from './midnight/localSecret.js';
+
+// DUST is what pays for a write, and the wallet only lets a dApp read it.
+export type { FeeCapacity } from './midnight/walletConnector.js';

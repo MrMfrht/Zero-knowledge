@@ -90,3 +90,18 @@ export async function connectWallet(
     status: { connected: true, address: unshieldedAddress },
   };
 }
+
+/**
+ * What the wallet can currently pay transaction fees with.
+ *
+ * Read-only by necessity: `getDustBalance` is the only DUST method the DApp
+ * Connector API exposes, so an app can warn about an empty tank but can never
+ * refill one.
+ */
+export interface FeeCapacity {
+  /** Spendable on fees right now. */
+  readonly balance: bigint;
+  /** Ceiling the registered NIGHT generates towards. */
+  readonly cap: bigint;
+  readonly canPayFees: boolean;
+}
