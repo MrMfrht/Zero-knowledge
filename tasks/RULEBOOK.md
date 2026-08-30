@@ -22,6 +22,11 @@ Only the two people who compile smart contracts need WSL. Everyone else works no
 
 New here? Start with [COMMON.md](COMMON.md), then open your own file.
 
+**Not sure how the pieces fit?** [THE-FLOW.md](THE-FLOW.md) walks the whole app
+start to finish — which app calls which API method, which circuit runs, whose
+secret is used, and what becomes public at each step. Ten minutes, written for
+everyone.
+
 **Two folders are not your scope unless they are yours:** `A_docs/` is deep contract
 detail for A, `D_docs/` is the backend plan for D. Ignore them otherwise — your task
 file and [packages/api/README.md](../packages/api/README.md) are everything you need.
