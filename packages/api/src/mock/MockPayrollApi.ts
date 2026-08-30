@@ -225,7 +225,7 @@ export class MockPayrollApi implements PayrollApi {
     workerKey: WorkerKey;
     amount: Amount;
     onStatus?: OnTransactionStatus;
-  }): Promise<{ txId: string }> {
+  }): Promise<{ txId?: string }> {
     this.requireWorker(params.workerKey);
     if (!this.walletStatus.connected) throw new PayrollError('No wallet connected.');
     return this.withLifecycle(params.onStatus, async () => ({ txId: fakeTxId() }));

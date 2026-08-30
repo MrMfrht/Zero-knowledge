@@ -25,7 +25,7 @@ export type WalletStatus =
  */
 export type TransactionStatus =
   | { readonly stage: 'signing' | 'proving' | 'submitting' | 'pending' }
-  | { readonly stage: 'confirmed'; readonly txId: string }
+  | { readonly stage: 'confirmed'; readonly txId?: string }
   | { readonly stage: 'failed'; readonly error: PayrollError };
 
 /**
@@ -89,12 +89,18 @@ export interface PayrollApi {
    * checked against the sealed rate.
    *
    * Requires a connected wallet. Throws if none is connected.
+   *
+   * `txId` is OPTIONAL and will often be absent. The browser wallet's
+   * `submitTransaction` resolves to `void`, so on the real implementation there
+   * is currently no reliable transaction id to return — see the investigation in
+   * `src/midnight/payment.ts`. The mock returns one; do not build UI that
+   * depends on receiving it.
    */
   payWorker(params: {
     workerKey: WorkerKey;
     amount: Amount;
     onStatus?: OnTransactionStatus;
-  }): Promise<{ txId: string }>;
+  }): Promise<{ txId?: string }>;
 
   // -------------------------------------------------------------------------
   // Employer  (used by D)
