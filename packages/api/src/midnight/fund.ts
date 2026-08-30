@@ -98,7 +98,7 @@ async function main(): Promise<void> {
         },
       ],
       genesis.secretKeys,
-      { ttl: new Date(Date.now() + 30 * 60 * 1000) },
+      { ttl: new Date(Date.now() + 30 * 60 * 1000), payFees: true },
     );
 
     // Spending unshielded NIGHT needs a signature over each intent, and the

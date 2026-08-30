@@ -91,9 +91,17 @@ export function signTransactionIntents(
   signFn: (payload: Uint8Array) => Signature,
   proofMarker: 'proof' | 'pre-proof',
 ): void {
-  if (!tx.intents || tx.intents.size === 0) return;
-  for (const segment of tx.intents.keys()) {
-    const intent = tx.intents.get(segment) as {
+  // Read the map ONCE and write it back at the end. On a WASM-backed
+  // transaction `intents` is a getter that hands out a fresh copy on every
+  // access, so the obvious `tx.intents.set(...)` mutates a throwaway and the
+  // signatures never reach the transaction. The node then rejects it as
+  // "Custom error: 192" -- InputsSignaturesLengthMismatch, "input count
+  // doesn't match signature count" -- which is true but says nothing about
+  // why. See docs.midnight.network/nodes/error-codes.
+  const intents = tx.intents;
+  if (!intents || intents.size === 0) return;
+  for (const segment of intents.keys()) {
+    const intent = intents.get(segment) as {
       serialize(): Uint8Array;
       signatureData(segment: number): Uint8Array;
       fallibleUnshieldedOffer?: { inputs: unknown[]; signatures: { at(i: number): Signature | undefined }; addSignatures(sigs: Signature[]): unknown };
@@ -110,8 +118,9 @@ export function signTransactionIntents(
       const sigs = cloned.guaranteedUnshieldedOffer.inputs.map((_, i) => cloned.guaranteedUnshieldedOffer!.signatures.at(i) ?? signature);
       cloned.guaranteedUnshieldedOffer = cloned.guaranteedUnshieldedOffer.addSignatures(sigs) as typeof cloned.guaranteedUnshieldedOffer;
     }
-    tx.intents.set(segment, cloned);
+    intents.set(segment, cloned);
   }
+  tx.intents = intents;
 }
 
 /**
