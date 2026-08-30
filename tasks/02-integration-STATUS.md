@@ -27,6 +27,50 @@ documents it so D never builds UI that waits for a txId.
 
 ---
 
+## 🔴 Breaking change, 2026-08-30 — two lines in your branch
+
+A privacy review found that `dappKey` had no per-deployment component, so one
+worker showed the **same** public key to every employer running NightShift, and
+two employers could join their public ledgers and discover a shared worker.
+Fixed by mixing a per-deployment random value into every identity. Details in
+[A_docs/06 question 12](../A_docs/06-open-design-questions.md).
+
+Sorry — this lands on code you had already written and got right. Two changes:
+
+**1. `dappKey` now takes two arguments.** In
+`packages/api/src/midnight/MidnightPayrollApi.ts:111`:
+
+```ts
+// was
+return bytesToHex(pureCircuits.dappKey(this.secret));
+// now — deploymentId is a public sealed field, read it from the ledger
+return bytesToHex(pureCircuits.dappKey(this.secret, deploymentId));
+```
+
+`deploymentId` is `export sealed ledger deploymentId: Bytes<32>`, so it comes
+back from `ledger(state).deploymentId` like any other public field. Worth
+caching once per contract rather than re-reading on every `getMyKey()`.
+
+**2. The constructor now takes a second argument.** In
+`packages/api/src/midnight/deploy.ts:221`:
+
+```ts
+// was
+args: [args.contributionPct],
+// now
+args: [args.contributionPct, crypto.getRandomValues(new Uint8Array(32))],
+```
+
+**This must be 32 fresh random bytes, every deployment.** A constant, or a value
+copied between deployments, silently restores the exact leak this fixes. It is
+the one way to get this wrong, so it is worth a comment in the deploy script.
+
+Everything else in your branch is unaffected — and your circuit call signatures
+were already correct against the real bindings, including the ones the api
+README had documented wrongly. Nicely done.
+
+---
+
 ## 🔓 You are now unblocked — the contract is on `dev`
 
 This is the news. Everything `MidnightPayrollApi` needs from A now exists:
@@ -34,7 +78,7 @@ This is the news. Everything `MidnightPayrollApi` needs from A now exists:
 | | Where |
 |---|---|
 | Compiled contract — TS bindings + ledger types | `packages/contract/src/managed/contract/` |
-| Circuits compiled | **All six** — plus exported `pureCircuits.dappKey(sk)` and `pureCircuits.sealRate(rate, salt)`, which are exactly the helpers your api needs. Note: the constructor now takes `contributionPct` (e.g. `25n`) |
+| Circuits compiled | **All six** — plus exported `pureCircuits.dappKey(sk, deploymentId)` and `pureCircuits.sealRate(rate, salt)`, which are exactly the helpers your api needs. The constructor takes `(contributionPct, deployment)` — see the breaking-change note above |
 | **`witnesses.ts`** — supplies `localSk`, storage-agnostic | `packages/contract/src/witnesses.ts` |
 | Proof it all runs | `npm run smoke -w @nightshift/contract` — the whole lifecycle over two periods, plus every rejection |
 | The map of who calls what | [`A_docs/07-circuit-map.md`](../A_docs/07-circuit-map.md) |

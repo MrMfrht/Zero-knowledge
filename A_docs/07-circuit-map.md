@@ -30,7 +30,7 @@ physical key that opens it. Knowing the serial number gets you nothing.
 - **The key is given away.** Karim sends his to the employer so they can type it
   into `hire`. It is how anyone refers to him.
 - **The secret is never given away.** It is used *inside the circuit, on his own
-  machine*, to prove he owns that key: `dappKey(localSk()) == theKeyOnChain`.
+  machine*, to prove he owns that key: `dappKey(localSk(), deploymentId) == theKeyOnChain`.
   He does not *say* "I am 0x7f3a…" — anyone could claim that. He *proves* it by
   producing a secret that hashes to it.
 
@@ -41,6 +41,28 @@ of which is cryptographic:
 |---|---|
 | *"Is this the holder of `0x7f3a…`?"* | **The secret.** Absolutely, mathematically |
 | *"Is `0x7f3a…` a man named Karim?"* | **Nothing in the system.** The employer decided that at the interview — see [05](05-keys-storage-and-identity.md) |
+
+## One key per employer, not one key per person
+
+`dappKey` takes a second argument — `deploymentId`, 32 random bytes fixed when
+that employer's contract was deployed and readable by anyone:
+
+```compact
+export pure circuit dappKey(sk: Bytes<32>, deployment: Bytes<32>): Bytes<32> {
+    return disclose(persistentHash<Vector<3, Bytes<32>>>(
+        [pad(32, "nightshift:pk:"), deployment, sk]));
+}
+```
+
+Karim has **one secret**, but a **different key in every employer's ledger**.
+That matters because ledgers are public: if his key were the same everywhere,
+two employers — or anyone reading the indexer — could match the two records and
+learn he works for both, along with each relationship's timeline. Different keys
+leave nothing to match on.
+
+This was missing from the first version of the contract and was caught in review
+([question 12](06-open-design-questions.md)). It is the kind of leak that is
+invisible while you are thinking about one employer.
 
 ---
 
@@ -57,7 +79,7 @@ calls one, it runs in his browser and returns his.
 So this identical line:
 
 ```compact
-const k = dappKey(localSk());
+const k = dappKey(localSk(), deploymentId);
 ```
 
 produces the **employer's** key inside `hire`, and **Karim's** key inside
@@ -104,7 +126,7 @@ and the employer says 40 — who decides? Payment cannot be checked against
 
 ```compact
 export circuit approveHours(worker: Bytes<32>, period: Uint<32>, hours: Uint<32>): [] {
-    assert(dappKey(localSk()) == employerKey, "only the employer may approve hours");
+    assert(dappKey(localSk(), deploymentId) == employerKey, "only the employer may approve hours");
 
     const w = disclose(worker);
     assert(active.member(w), "this worker has not accepted an offer");
@@ -191,7 +213,7 @@ Here, he *proves* it — without the amount ever becoming public.
 export circuit confirmPayment(
     period: Uint<32>, rate: Uint<64>, salt: Bytes<32>, amountReceived: Uint<64>
 ): [] {
-    const k = disclose(dappKey(localSk()));
+    const k = disclose(dappKey(localSk(), deploymentId));
     assert(active.member(k), "you have not accepted an offer");
     assert(active.lookup(k), "your employment has ended");
 
@@ -289,7 +311,7 @@ what was actually reported** — until a pension claim falls short, decades late
 export circuit proveContribution(
     period: Uint<32>, rate: Uint<64>, salt: Bytes<32>, declared: Uint<64>
 ): [] {
-    const k = disclose(dappKey(localSk()));
+    const k = disclose(dappKey(localSk(), deploymentId));
     assert(active.member(k), "you have not accepted an offer");
 
     const pk = disclose(periodKey(k, period));
@@ -351,7 +373,7 @@ be able to erase it.
 
 ```compact
 export circuit endEmployment(worker: Bytes<32>): [] {
-    assert(dappKey(localSk()) == employerKey, "only the employer may end employment");
+    assert(dappKey(localSk(), deploymentId) == employerKey, "only the employer may end employment");
 
     const w = disclose(worker);
     assert(active.member(w), "this worker never accepted an offer");

@@ -60,14 +60,17 @@ can use the contract without installing the Compact toolchain.
 > It does **not** contain proving keys, so it cannot generate a real transaction
 > yet. A full build lands before integration.
 
-> 🔴 **If you are merging the `contract-full-zk-build` branch, read this first.**
-> That branch adds real proving and verifier keys for all six circuits — but they
-> were generated **before** the `approveHours` write-once fix on 2026-08-30.
-> Proving keys are tied to the exact circuit they were built from, so
-> `approveHours.prover`, `approveHours.verifier` and `approveHours.bzkir` on that
-> branch no longer match the contract on `dev`, and any transaction proved with
-> them will fail to verify. **Rebase that branch onto `dev` and re-run
-> `npm run compact:full` before merging** — do not merge the keys as they stand.
+> 🔴 **The keys on `contract-full-zk-build` are stale — all six of them.**
+> That branch adds real proving and verifier keys, but they were generated before
+> two fixes on 2026-08-30: the `approveHours` write-once guard, and the
+> per-deployment change to `dappKey`. A proving key is tied to the exact circuit
+> it was built from, and since **every** circuit calls `dappKey`, every key on
+> that branch is now out of date — a proof made with one will not verify.
+>
+> Merging the branch is harmless in itself (it only adds files, it changes no
+> source), so accept the PR if you want the work in the history. Just re-run
+> `npm run compact:full` on top of `dev` afterwards and commit the regenerated
+> keys. Do not deploy anything using the keys as they stand.
 
 ## Circuits
 
@@ -87,11 +90,20 @@ the contract byte-for-byte:
 
 | Helper | Use |
 |---|---|
-| `pureCircuits.dappKey(sk)` | Show a user their own key (C's "Your worker key" screen) |
+| `pureCircuits.dappKey(sk, deploymentId)` | Show a user their own key (C's "Your worker key" screen) |
 | `pureCircuits.sealRate(rate, salt)` | Compute the commitment in `hire` exactly as `acceptHire` will check it |
 
-The constructor now takes one argument: `contributionPct` (e.g. `25n`) — the
-social-security percentage, sealed for the contract's life.
+The constructor takes **two** arguments:
+
+| Argument | Value |
+|---|---|
+| `contributionPct` | The social-security percentage, e.g. `25n`. Public and sealed for the contract's life |
+| `deployment` | **32 fresh random bytes, generated per deployment.** Stored as the public sealed field `deploymentId` |
+
+`deployment` is what stops one worker presenting the same public key to every
+employer running NightShift. Reusing a value across deployments — or hardcoding
+one — silently restores that leak, so generate it with
+`crypto.getRandomValues(new Uint8Array(32))` at deploy time and never copy it.
 
 ## Read first
 

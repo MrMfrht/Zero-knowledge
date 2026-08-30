@@ -440,7 +440,7 @@ export { MidnightPayrollApi } from './midnight/MidnightPayrollApi.js';
 
 | Interface method | Contract circuit | Notes |
 |---|---|---|
-| `getMyKey()` | — | `persistentHash([pad(32,"nightshift:pk:"), localSk()])` |
+| `getMyKey()` | — | `pureCircuits.dappKey(secret, deploymentId)` — read `deploymentId` from the ledger; do **not** reimplement the hash |
 | `hire()` | `hire(worker, rateCommitment)` | You generate the salt and compute the commitment |
 | `approveHours()` | `approveHours(worker, period, hours)` | |
 | `acceptOffer()` | `acceptHire(rate, salt)` | Store rate+salt in private state on success |

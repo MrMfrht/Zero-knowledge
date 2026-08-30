@@ -14,6 +14,13 @@
             "type-name": "Bytes",
             "length": 32
           }
+        },
+        {
+          "name": "deployment",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
         }
       ],
       "result-type": {
@@ -256,8 +263,18 @@
       }
     },
     {
-      "name": "agreedRate",
+      "name": "deploymentId",
       "index": 1,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "agreedRate",
+      "index": 2,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -271,7 +288,7 @@
     },
     {
       "name": "approvedHours",
-      "index": 2,
+      "index": 3,
       "exported": true,
       "storage": "Map",
       "key": {
@@ -285,7 +302,7 @@
     },
     {
       "name": "contributionRate",
-      "index": 3,
+      "index": 4,
       "exported": true,
       "storage": "Cell",
       "type": {
@@ -295,19 +312,6 @@
     },
     {
       "name": "contributionOk",
-      "index": 4,
-      "exported": true,
-      "storage": "Map",
-      "key": {
-        "type-name": "Bytes",
-        "length": 32
-      },
-      "value": {
-        "type-name": "Boolean"
-      }
-    },
-    {
-      "name": "paidFor",
       "index": 5,
       "exported": true,
       "storage": "Map",
@@ -320,8 +324,21 @@
       }
     },
     {
-      "name": "active",
+      "name": "paidFor",
       "index": 6,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
+        "type-name": "Boolean"
+      }
+    },
+    {
+      "name": "active",
+      "index": 7,
       "exported": true,
       "storage": "Map",
       "key": {

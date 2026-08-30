@@ -193,7 +193,7 @@ Tracked so it does not get silently skipped.
 
 ---
 
-## 🟠 12. The same worker shows the same key to every employer — OPEN
+## ✅ 12. The same worker showed the same key to every employer — FIXED 2026-08-30
 
 **Found in the privacy audit of 2026-08-30, not by us writing the code.**
 
@@ -211,16 +211,35 @@ impossible. The comment has been corrected; the behaviour has not.
 **Why it survived review:** the domain separator genuinely does separate
 NightShift from *other apps*. It just does not separate NightShift from itself.
 
-**The fix.** Mix a per-deployment value — the contract's own address, or a value
-the employer supplies at deployment — into the hash, so one secret yields a
-different public key per employer. It is a change to one `pure circuit`, but it
-changes every key on the ledger, so it has to happen before anything real is
-deployed, and B's `getMyKey()` must change with it or nothing matches.
+**The fix, now shipped.** A new sealed ledger field, `deploymentId` — 32 random
+bytes supplied once as a constructor argument — is mixed into every identity:
 
-**For the demo:** with one employer on stage, nothing about it is visible. If a
-judge asks what happens with two employers, answer honestly — this is the gap,
-here is the one-line fix, we did not want to change key derivation the night
-before.
+```compact
+export pure circuit dappKey(sk: Bytes<32>, deployment: Bytes<32>): Bytes<32> {
+    return disclose(persistentHash<Vector<3, Bytes<32>>>(
+        [pad(32, "nightshift:pk:"), deployment, sk]));
+}
+```
+
+Two separators now, doing two different jobs: the constant string keeps
+NightShift apart from other apps, and `deploymentId` keeps each NightShift
+deployment apart from every other one. Karim's single secret yields an unrelated
+key in each employer's ledger, so the two ledgers cannot be joined.
+
+`smoke.mjs` asserts it directly — it derives Karim's key under two different
+deployment values and fails the run if they match.
+
+**The one way to get this wrong:** deploy two contracts with the *same*
+`deploymentId`. Then the keys collide again and the protection silently
+evaporates. The deploying app must generate 32 fresh random bytes per
+deployment, never a constant and never a copy. That is stated in the
+constructor's own comment, because it is the kind of thing a hurried deploy
+script gets wrong.
+
+**Chosen over using the contract's own address** because a constructor argument
+uses only constructs already proven to compile here, and is explicit about where
+the value comes from. The trade is that correctness depends on the deploy script
+rather than on the chain.
 
 ---
 
@@ -259,7 +278,10 @@ cannot fix that period, and the recourse is off-chain.
 2. **Question 3** — an employer suppressing evidence by doing nothing is the sharpest attack on the demo
 3. **Question 1** — key substitution, and it is nearly free to mitigate with a QR code
 
-Question 12 sits just behind them: it is invisible in a one-employer demo, but it
-is the one an experienced privacy person will ask about.
+Questions 12 and 13 were both found by review rather than by writing the code,
+and both are now fixed. Worth remembering why they survived being written,
+compiled and smoke-tested: **the tests only covered the case where the bug was
+invisible** — one period, one salaried worker, one employer. Test data that
+cannot distinguish a right answer from a wrong one is not a test.
 
 Everything else is safe to ship with a sentence of honesty.

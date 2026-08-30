@@ -60,7 +60,8 @@ All four were verified by compiling, not read from a blog post:
    Store `persistentCommit(value, salt)` instead.
 2. **Never use `ownPublicKey()` to check who is calling.** It is a witness — the
    caller's own machine decides what it returns. Identity comes from
-   `persistentHash([pad(32, "nightshift:pk:"), localSk()])`.
+   `persistentHash([pad(32, "nightshift:pk:"), deploymentId, localSk()])` — the
+   `deploymentId` is what stops one worker looking identical to two employers.
 3. **Never write `/` or `%`.** Compact has no division operator. Cross-multiply —
    and against real **earnings**, not the bare rate:
    `declared * 100 == hours * rate * pct`.

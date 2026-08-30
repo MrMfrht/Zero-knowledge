@@ -55,12 +55,14 @@ export type ProvableCircuits<PS> = {
 }
 
 export type PureCircuits = {
-  dappKey(sk_0: Uint8Array): Uint8Array;
+  dappKey(sk_0: Uint8Array, deployment_0: Uint8Array): Uint8Array;
   sealRate(rate_0: bigint, salt_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
-  dappKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  dappKey(context: __compactRuntime.CircuitContext<PS>,
+          sk_0: Uint8Array,
+          deployment_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   sealRate(context: __compactRuntime.CircuitContext<PS>,
            rate_0: bigint,
            salt_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
@@ -90,6 +92,7 @@ export type Circuits<PS> = {
 
 export type Ledger = {
   readonly employerKey: Uint8Array;
+  readonly deploymentId: Uint8Array;
   agreedRate: {
     isEmpty(): boolean;
     size(): bigint;
@@ -139,7 +142,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>,
-               contributionPct_0: bigint): __compactRuntime.ConstructorResult<PS>;
+               contributionPct_0: bigint,
+               deployment_0: Uint8Array): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;

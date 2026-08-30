@@ -22,8 +22,12 @@ const employer = { secretKey: secret(7) };
 const karim = { secretKey: secret(9) };
 const stranger = { secretKey: secret(42) };
 
+// 32 random bytes chosen once per deployment. Every identity on this ledger is
+// derived from it, so the same person gets a different key from each employer.
+const DEPLOYMENT = crypto.getRandomValues(new Uint8Array(32));
+
 // Karim's app would show him this; here we compute it the same way the api will.
-const karimKey = pureCircuits.dappKey(karim.secretKey);
+const karimKey = pureCircuits.dappKey(karim.secretKey, DEPLOYMENT);
 
 const RATE = 5000n;
 const SALT = crypto.getRandomValues(new Uint8Array(32));
@@ -42,9 +46,20 @@ const mustFail = (label, fn) => {
 };
 
 // ─── Step 3: deploy + hire (employer) ───────────────────────────────────────
-const ctor = contract.initialState(RT.createConstructorContext(employer, COIN), PCT);
+const ctor = contract.initialState(RT.createConstructorContext(employer, COIN), PCT, DEPLOYMENT);
 state = ctor.currentContractState.data;
 console.log('deploy(pct=25): employerKey on chain ✅');
+
+// The cross-employer privacy fix, demonstrated. Karim's ONE secret produces a
+// different public key under a different deployment, so a second employer's
+// ledger cannot be joined against this one to reveal that they share him.
+const otherDeployment = crypto.getRandomValues(new Uint8Array(32));
+const karimElsewhere = pureCircuits.dappKey(karim.secretKey, otherDeployment);
+const sameKeyEverywhere = karimElsewhere.every((b, i) => b === karimKey[i]);
+console.log(sameKeyEverywhere
+  ? '   BUG — same key in two deployments; cross-employer linkage is possible'
+  : "   same secret, different deployment → different key: employers can't correlate ✅");
+if (sameKeyEverywhere) process.exitCode = 1;
 
 const commitment = pureCircuits.sealRate(RATE, SALT); // the api's job, done identically
 run(employer, 'hire', karimKey, commitment);

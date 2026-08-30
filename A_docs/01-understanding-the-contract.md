@@ -364,7 +364,7 @@ Every person has a random 32-byte secret on their own device, which never leaves
 
 ```compact
 circuit myKey(): Bytes<32> {
-    return persistentHash([pad(32, "nightshift:pk:"), localSk()]);
+    return persistentHash([pad(32, "nightshift:pk:"), deploymentId, localSk()]);
 }
 ```
 
@@ -380,7 +380,15 @@ Two bonuses:
 - **It is not your name.** `0x7f3a…` identifies you inside this contract and reveals nothing about who you are in real life.
 - **It is different in every app.** The `"nightshift:pk:"` text is a *domain separator*. A different app uses a different word, so the same person gets a completely different identity there, and nobody can link the two.
 
-One honest caveat on that second point: the separator is the same for every *NightShift* deployment. So Karim shows the **same** key to two different employers who both run NightShift, and those two employers could compare their public boards and work out they share a worker. Fixing it means mixing the contract's own address into the hash. It is open question #12 in [A_docs/06](06-open-design-questions.md).
+That second point needs one more ingredient to be true, and it is worth understanding why. A fixed word like `"nightshift:pk:"` separates NightShift from *other apps* — but it is the same word in every NightShift contract. So Karim would show the **same** key to two different employers who both run NightShift, and they could compare their public boards and work out they share a worker.
+
+So the hash mixes in a second thing: `deploymentId`, 32 random bytes chosen when that particular employer's contract is deployed. One secret, a different key in each employer's ledger, nothing to join on. The full form is
+
+```
+your key = hash("nightshift:pk:" + thisDeployment + yourSecret)
+```
+
+This was [question 12](06-open-design-questions.md), found in review after the contract was already written and passing its tests — a good example of a bug that only appears when you imagine a *second* employer.
 
 ---
 

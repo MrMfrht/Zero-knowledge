@@ -231,7 +231,7 @@ Everything above except the last line is verified by
 ## Rules you must not break
 
 1. **Never put a salary or payment amount in a `Map`, `Set`, or ledger field.** Those are public. Store `persistentCommit(value, salt)` instead.
-2. **Never use `ownPublicKey()` to check who is calling.** It is controlled by the caller's own machine — anyone can fake it. Identity comes from hashing a secret: `persistentHash([pad(32, "nightshift:pk:"), _sk])`.
+2. **Never use `ownPublicKey()` to check who is calling.** It is controlled by the caller's own machine — anyone can fake it. Identity comes from hashing a secret together with this deployment's id: `persistentHash([pad(32, "nightshift:pk:"), deploymentId, _sk])`.
 3. **Never trust a value a witness gives you** without checking it against something. Witnesses run on the user's computer and are not verified.
 4. **`disclose()` does not hide anything.** It is the opposite — it tells the compiler "yes, publish this."
 
