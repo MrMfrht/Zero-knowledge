@@ -27,6 +27,7 @@ import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import type {
   MidnightProvider,
   PrivateStateProvider,
@@ -179,14 +180,80 @@ export async function connectPayrollProviders(connectedApi: ConnectedAPI): Promi
     getEncryptionPublicKey: () => shieldedEncryptionPublicKey as unknown as EncPublicKey,
   };
 
-  const provingProvider = await connectedApi.getProvingProvider(zkConfigProvider);
+  const proofProvider = await resolveProofProvider(connectedApi, config, zkConfigProvider);
 
   return {
     privateStateProvider: createInMemoryPrivateStateProvider<PayrollPrivateState>(),
     publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri),
     zkConfigProvider,
-    proofProvider: createProofProvider(provingProvider),
+    proofProvider,
     walletProvider: resolvedWalletProvider,
     midnightProvider: resolvedWalletProvider,
   };
+}
+
+/**
+ * Get something that can produce proofs, from whichever mechanism this wallet
+ * actually implements.
+ *
+ * There are two, and which one you get depends on the wallet's age rather
+ * than on anything the DApp chooses:
+ *
+ *   `getProvingProvider` -- the wallet proves on the DApp's behalf. Added in
+ *   dapp-connector-api 4.x, and what this file originally assumed.
+ *
+ *   `getConfiguration().proverServerUri` -- the wallet only says WHERE its
+ *   proof server is, and the DApp proves against it directly. Marked
+ *   deprecated in 4.0.1, but it is what shipped wallets still offer.
+ *
+ * Lace Midnight Preview 2.36 has only the second. Calling the first gives
+ * "connectedApi.getProvingProvider is not a function", which reads like our
+ * bug and is a version mismatch -- so this tries the new path, falls back to
+ * the old one, and says plainly when neither exists.
+ *
+ * The fallback does not weaken anything. That prover URI points at the
+ * user's own proof server (`Local (http://localhost:6300)` in Lace's
+ * settings, the same container in docker/compose.yml). Proving still happens
+ * on the user's machine, which is the whole trust boundary this product
+ * rests on -- see CLAUDE.md. If a wallet ever reported a REMOTE prover here,
+ * accepting it would hand witness values to a third party, so that case is
+ * refused rather than trusted.
+ */
+async function resolveProofProvider(
+  connectedApi: ConnectedAPI,
+  config: Awaited<ReturnType<ConnectedAPI['getConfiguration']>>,
+  zkConfigProvider: ZKConfigProvider<PayrollCircuitId>,
+): Promise<ProofProvider> {
+  if (typeof connectedApi.getProvingProvider === 'function') {
+    return createProofProvider(await connectedApi.getProvingProvider(zkConfigProvider));
+  }
+
+  const proverServerUri = config.proverServerUri;
+  if (!proverServerUri) {
+    throw new Error(
+      'This wallet offers no way to produce proofs: it has neither getProvingProvider ' +
+        '(dapp-connector-api 4.x) nor a proverServerUri in its configuration. Point the ' +
+        "wallet at a local proof server in its settings, or update it.",
+    );
+  }
+
+  assertLocalProver(proverServerUri);
+  return httpClientProofProvider(proverServerUri, zkConfigProvider);
+}
+
+/**
+ * A proof server sees witness values -- salaries, salts, secret keys -- in
+ * the clear. That is unavoidable: proving needs the secret. What IS avoidable
+ * is sending them somewhere other than this machine, so a non-local prover is
+ * refused rather than silently used.
+ */
+function assertLocalProver(uri: string): void {
+  const host = new URL(uri).hostname;
+  if (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1' && host !== '[::1]') {
+    throw new Error(
+      `Refusing to prove against "${uri}". A proof server sees your salary, your salt and ` +
+        'your secret key in the clear, so it must run on your own machine. Set the wallet ' +
+        "back to its local proof server (Lace: Settings -> Midnight -> Local).",
+    );
+  }
 }

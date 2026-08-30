@@ -1,6 +1,5 @@
 import React from 'react';
 import { Users, UserPlus, Clock, CreditCard, Lock, ShieldCheck, Wallet, ChevronRight } from 'lucide-react';
-import { DEMO_EMPLOYER } from '@nightshift/api';
 
 export type TabType = 'team' | 'hire' | 'hours' | 'pay';
 
@@ -10,6 +9,16 @@ interface NavbarProps {
   walletConnected: boolean;
   walletBusy: boolean;
   onToggleWallet: () => void;
+  /**
+   * Who this browser is ON THE CONTRACT, from `api.getMyKey()`.
+   *
+   * This used to render the DEMO_EMPLOYER constant -- a literal 0xe0e0..e0
+   * that no contract has ever seen. It looked like an identity and was
+   * decoration, so it could not tell you whether you were the employer the
+   * contract would accept, which is the one thing it appeared to answer.
+   * Null while it resolves.
+   */
+  actorKey: string | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   walletConnected,
   walletBusy,
   onToggleWallet,
+  actorKey,
 }) => {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
@@ -96,7 +106,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="hidden lg:flex items-center gap-2 rounded-lg bg-slate-900/60 px-3 py-1.5 text-xs text-slate-300 border border-slate-800">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
               <span>Actor:</span>
-              <span className="font-mono text-emerald-400 font-semibold">{DEMO_EMPLOYER.slice(0, 10)}…</span>
+              <span className="font-mono text-emerald-400 font-semibold" title={actorKey ?? undefined}>
+                {actorKey ? `${actorKey.slice(0, 10)}…` : 'resolving…'}
+              </span>
             </div>
 
             <button

@@ -16,6 +16,7 @@ export default function App() {
   const [walletError, setWalletError] = useState<string | null>(null);
   const [selectedWorkerKey, setSelectedWorkerKey] = useState<string | undefined>(undefined);
   const [toast, setToast] = useState<string | null>(null);
+  const [actorKey, setActorKey] = useState<string | null>(null);
 
   // Real contract if VITE_CONTRACT_ADDRESS is set, mock otherwise — the
   // decision lives in @nightshift/api so all three apps make it identically.
@@ -54,6 +55,26 @@ export default function App() {
    * mid-flow — PayWorker's send button — show it beside the control the
    * person just pressed, instead of only in the banner at the top of the page.
    */
+  // Ask the api who this browser is ON THE CONTRACT. On a real chain that is
+  // dappKey(localSk(), deploymentId) -- derived from a secret this browser
+  // holds and which nothing can override -- so it is the only honest answer
+  // to "who am I", and the value every employer circuit asserts against.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getMyKey()
+      .then((key) => {
+        if (!cancelled) setActorKey(key);
+      })
+      .catch((error: unknown) => {
+        console.error('getMyKey failed:', error);
+        if (!cancelled) setActorKey(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
   const handleToggleWallet = useCallback(async (): Promise<string | null> => {
     setWalletBusy(true);
     setWalletError(null);
@@ -100,6 +121,7 @@ export default function App() {
         walletConnected={walletConnected}
         walletBusy={walletBusy}
         onToggleWallet={handleToggleWallet}
+        actorKey={actorKey}
       />
 
       {/* Main Content Area */}
