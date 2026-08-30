@@ -21,6 +21,7 @@
     "start:backend": "npm run start:dev -w @nightshift/backend"
   },
   "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.24",
     "lightningcss-win32-x64-msvc": "^1.33.0",
     "typescript": "5.7.2"
   }
