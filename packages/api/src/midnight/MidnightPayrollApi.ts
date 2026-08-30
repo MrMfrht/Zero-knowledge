@@ -58,6 +58,7 @@ import { connectPayrollProviders, type PayrollProviders } from './providers.js';
 import { getOrCreateLocalSecret } from './localSecret.js';
 import { bytesToHex, hexToBytes } from './encoding.js';
 import { periodToUint32, uint32ToPeriod } from './periods.js';
+import { periodKey } from './periodKey.js';
 import { INDEXER_ENDPOINTS, type NetworkId } from './network.js';
 
 /**
@@ -95,12 +96,31 @@ export interface MidnightPayrollApiOptions {
    * somewhere shared.
    */
   readonly storage?: Storage;
+  /**
+   * The range of periods `getEmploymentRecord` will look for.
+   *
+   * Period entries are filed under a hash, so they cannot be listed — only
+   * guessed at and probed for (see `readableWorkerPeriods`). That makes a
+   * bound unavoidable, and an unavoidable bound is worth stating rather than
+   * burying: **a period outside this window exists on chain and will not be
+   * reported.** The default is the ten years ending one year from now, which
+   * covers any employment this contract can plausibly hold and costs about a
+   * hundred and thirty in-memory hashes per read.
+   */
+  readonly periodScanWindow?: { readonly from: Period; readonly to: Period };
+}
+
+/** Ten years back, one year forward, as month indices. */
+function defaultPeriodScanWindow(now: Date): { firstPeriod: bigint; lastPeriod: bigint } {
+  const thisMonth = BigInt(now.getUTCFullYear() * 12 + now.getUTCMonth());
+  return { firstPeriod: thisMonth - 120n, lastPeriod: thisMonth + 12n };
 }
 
 export class MidnightPayrollApi implements PayrollApi {
   private readonly contractAddress: string;
   private readonly networkId: NetworkId;
   private readonly secret: Uint8Array;
+  private readonly periodScanWindow: { firstPeriod: bigint; lastPeriod: bigint };
 
   /** Set once `connectWallet()` resolves; every write method requires it. */
   private connection: WalletConnection | undefined;
@@ -113,6 +133,12 @@ export class MidnightPayrollApi implements PayrollApi {
     this.networkId = options.networkId;
     setNetworkId(this.networkId);
     this.secret = getOrCreateLocalSecret(options.storage ?? window.localStorage);
+    this.periodScanWindow = options.periodScanWindow
+      ? {
+          firstPeriod: periodToUint32(options.periodScanWindow.from),
+          lastPeriod: periodToUint32(options.periodScanWindow.to),
+        }
+      : defaultPeriodScanWindow(new Date());
   }
 
   // ---------------------------------------------------------------------
@@ -285,23 +311,18 @@ export class MidnightPayrollApi implements PayrollApi {
     const state = await this.readLedger();
     const summaries: WorkerSummary[] = [];
     for (const [workerBytes, isActive] of state.active) {
-      const workerKey = bytesToHex(workerBytes);
-      let confirmed = 0;
-      let unconfirmed = 0;
-      for (const [pk] of state.approvedHours) {
-        // paidFor/approvedHours are keyed by periodKey(worker, period), a
-        // hash — there is no way to recover which worker a given periodKey
-        // belongs to without also iterating `active` and recomputing
-        // periodKey ourselves, which needs the actual period numbers.
-        // Counting confirmed/unconfirmed periods per worker from the public
-        // ledger alone therefore needs the auditor's own period-enumeration
-        // approach (see A_docs/07's note on E) — left as `0` here rather
-        // than a fabricated count. Flag per the rulebook: this is a real
-        // gap between what WorkerSummary promises and what the public
-        // ledger alone can answer without an off-chain period index.
-        void pk;
-      }
-      summaries.push({ workerKey, active: isActive, confirmedPeriods: confirmed, unconfirmedPeriods: unconfirmed });
+      // Iterating `approvedHours` is useless here — its keys are hashes, and
+      // nothing in a `periodKey` says which worker it belongs to. Counting a
+      // worker's periods means going the other way: take the worker we
+      // already have, hash each candidate period, and see which keys exist.
+      // `readableWorkerPeriods` does that, under the documented window.
+      const periods = this.readableWorkerPeriods(state, workerBytes);
+      summaries.push({
+        workerKey: bytesToHex(workerBytes),
+        active: isActive,
+        confirmedPeriods: periods.filter((p) => p.status === 'confirmed').length,
+        unconfirmedPeriods: periods.filter((p) => p.status === 'unconfirmed').length,
+      });
     }
     return summaries;
   }
@@ -401,22 +422,56 @@ export class MidnightPayrollApi implements PayrollApi {
   // ---------------------------------------------------------------------
 
   /**
+   * One worker's period history, recovered from the public ledger by probing.
+   *
    * `approvedHours`/`paidFor`/`contributionOk` are keyed by
    * `periodKey(worker, period)` — a hash that hides which period a given
-   * entry is for. Reading "this worker's periods" from the public ledger
-   * therefore needs candidate period numbers to hash and probe with; there
-   * is no way to enumerate them from the ledger alone. This tries every
-   * period from this worker's private acceptance record forward to now,
-   * which is correct for THIS device (it knows its own accepted periods
-   * going forward) but cannot discover history from before this device
-   * held the private state — the same class of gap as `getMyOffer`. E's
-   * auditor board needs its own, better answer to this; see A_docs/07.
+   * entry is for. That is deliberate: a chain observer cannot iterate the
+   * maps and learn *when* anyone worked. The cost is that even a legitimate
+   * reader cannot enumerate a worker's periods; they can only hash candidate
+   * periods and ask whether that key is present.
+   *
+   * So that is what this does. Periods are month indices (see `periods.ts`),
+   * which makes the candidate set a contiguous range, and the whole ledger is
+   * already decoded in memory — a scan is some hundreds of hashes and map
+   * lookups, no network.
+   *
+   * THE BOUND IS REAL AND IS NOT SILENT. Only periods inside
+   * `periodScanWindow` are looked for; a period outside it exists on chain
+   * and will not appear here. The default window is documented on
+   * `MidnightPayrollApiOptions.periodScanWindow`. Widening it costs only CPU.
+   *
+   * Statuses match `MockPayrollApi.periodsOf` exactly, so the three apps
+   * behave the same against either implementation. `awaiting-hours` is never
+   * produced: it means "the employer has not approved a timesheet yet", and a
+   * period nobody has approved leaves no trace on chain to find.
    */
-  private readableWorkerPeriods(_state: Ledger, _workerBytes: Uint8Array): PeriodRecord[] {
-    // Deliberately not fabricated: see the doc comment above. Returning an
-    // empty list rather than guessing which periods exist is the honest
-    // choice until E's approach (or a public period index) exists.
-    return [];
+  private readableWorkerPeriods(state: Ledger, workerBytes: Uint8Array): PeriodRecord[] {
+    const { firstPeriod, lastPeriod } = this.periodScanWindow;
+    const found: { period: bigint; hours: number; paid: boolean; contributionOk: boolean }[] = [];
+
+    for (let period = firstPeriod; period <= lastPeriod; period += 1n) {
+      const pk = periodKey(workerBytes, period);
+      if (!state.approvedHours.member(pk)) continue;
+      found.push({
+        period,
+        hours: Number(state.approvedHours.lookup(pk)),
+        paid: state.paidFor.member(pk) && state.paidFor.lookup(pk),
+        contributionOk: state.contributionOk.member(pk) && state.contributionOk.lookup(pk),
+      });
+    }
+
+    // The most recent approved-but-unconfirmed period is still waiting on the
+    // worker; an earlier one has been overtaken and stays unconfirmed on the
+    // public record. That distinction is the whole point of `unconfirmed`.
+    const latestApproved = found.at(-1)?.period;
+
+    return found.map(({ period, hours, paid, contributionOk }) => ({
+      period: uint32ToPeriod(period),
+      status: paid ? 'confirmed' : period === latestApproved ? 'awaiting-confirmation' : 'unconfirmed',
+      hours,
+      contributionVerified: contributionOk,
+    }));
   }
 
   private requireConnectedApi(): ConnectedAPI {

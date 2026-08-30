@@ -27,10 +27,26 @@ globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { ledger } from './contract.js';
+import { MidnightPayrollApi } from './MidnightPayrollApi.js';
 import type { NetworkId } from './network.js';
 import { INDEXER_ENDPOINTS } from './network.js';
 
 const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
+
+/** An in-process `Storage`, so this read-only script never persists a secret. */
+function ephemeralStorage(): Storage {
+  const map = new Map<string, string>();
+  return {
+    get length() {
+      return map.size;
+    },
+    clear: () => map.clear(),
+    getItem: (k: string) => map.get(k) ?? null,
+    key: (i: number) => [...map.keys()][i] ?? null,
+    removeItem: (k: string) => void map.delete(k),
+    setItem: (k: string, v: string) => void map.set(k, v),
+  };
+}
 
 /**
  * A Compact `Map` ledger field. Note `size()` is a method returning `bigint`,
@@ -89,6 +105,30 @@ async function main(): Promise<void> {
   describeMap('contributionOk', state.contributionOk);
   describeMap('paidFor', state.paidFor);
   describeMap('active', state.active);
+
+  // The same facts, decoded. Above, every period lives under a hash and no
+  // row says which worker or which month it belongs to — that is the privacy
+  // property working. Below, the api recovers it by hashing candidate periods
+  // and probing (`periodKey.ts`), which anyone can do given a worker key.
+  // Seeing both is the honest picture: hidden from a passive reader, legible
+  // to someone who already knows who they are looking for.
+  console.log('\n--- decoded per-worker history (probed, see periodKey.ts) ---');
+  const reader = new MidnightPayrollApi({
+    contractAddress: address,
+    networkId,
+    // Read-only: nothing here uses the secret. A throwaway one keeps this
+    // script from ever touching a real device secret.
+    storage: ephemeralStorage(),
+  });
+  for (const record of await reader.listEmploymentRecords()) {
+    console.log(`\n${record.workerKey}  active=${record.active}`);
+    if (record.periods.length === 0) {
+      console.log('  no periods found in the default scan window');
+    }
+    for (const p of record.periods) {
+      console.log(`  ${p.period}  ${p.hours}h  [${p.status}]  contribution=${p.contributionVerified}`);
+    }
+  }
 }
 
 main()
