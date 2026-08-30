@@ -16,6 +16,7 @@ NightShift is a payroll application built on the [Midnight Network](https://docs
 | **Soham Kadu** | Frontend applications |
 | **Larry D. Ross** | Backend services |
 | **Rudra Kumar** | Frontend · Auditor experience |
+| **Harsh** | Team member |
 
 ---
 
