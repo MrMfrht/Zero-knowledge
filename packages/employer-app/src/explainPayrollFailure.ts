@@ -38,13 +38,39 @@ const CONNECT_A_WALLET =
 const WALLET_DECLINED =
   'The wallet extension declined the request. Approve it in the wallet popup, then try again.';
 
+/**
+ * Print every link in an error's `cause` chain to the console.
+ *
+ * The returned message is deliberately free of stack traces and SDK
+ * vocabulary, which is right for the person reading it and useless for
+ * debugging a chain rejection. Worse, midnight-js wraps submission failures
+ * as `new Error(\`...: ${String(err)}\`, { cause: err })` — and when the
+ * inner error carries an empty message, as WASM-thrown and extension-thrown
+ * errors do, that interpolation renders the entire cause as the bare word
+ * "Error". Everything that identifies the failure survives only on `.cause`.
+ *
+ * So walk it. A Substrate rejection's `Custom error: N` code, a proof
+ * failure, a wallet's own refusal — all of them live somewhere in this chain
+ * and nowhere else.
+ */
+function logFailureChain(error: unknown): void {
+  console.groupCollapsed('[NightShift] write failed — full error chain');
+  let current: unknown = error;
+  for (let depth = 0; current != null && depth < 8; depth += 1) {
+    if (current instanceof Error) {
+      console.error(`#${depth} ${current.name}: ${current.message || '(empty message)'}`);
+      if (current.stack) console.error(current.stack);
+      current = (current as { cause?: unknown }).cause;
+    } else {
+      console.error(`#${depth} (non-Error)`, current);
+      break;
+    }
+  }
+  console.groupEnd();
+}
+
 export function explainPayrollFailure(error: unknown): FailureExplanation {
-  // The returned message is deliberately free of stack traces and SDK
-  // vocabulary, which is right for the person and useless for debugging a
-  // chain rejection. The raw error goes to the console so both audiences are
-  // served -- a rejected transaction's real cause (a Substrate `Custom error:
-  // N`, a proof failure) is otherwise lost entirely.
-  console.error('[NightShift] raw failure:', error);
+  logFailureChain(error);
 
   if (error instanceof PayrollError) {
     return { message: error.message, isWalletProblem: false };
